@@ -1,0 +1,148 @@
+import { Outlet, Link, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Sparkles, LayoutDashboard, Upload, Heart, User, Menu, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { useAppContext } from "@/context/AppContext";
+
+export default function AppLayout() {
+  const location = useLocation();
+  const { user } = useAppContext();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const navLinks = [
+    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+    { name: "Try-On", path: "/upload", icon: Upload },
+    { name: "Studio", path: "/studio", icon: Sparkles },
+    { name: "Matches", path: "/recommendations", icon: Heart },
+    { name: "Profile", path: "/profile-setup", icon: User },
+  ];
+
+  const closeMobile = () => setMobileMenuOpen(false);
+
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/20">
+      <nav className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 transition-all duration-300">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2 group" onClick={closeMobile}>
+            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center group-hover:scale-105 transition-transform">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="font-bold text-xl tracking-tight">Deep Fashion</span>
+          </Link>
+
+          <div className="flex items-center gap-6">
+            {/* Desktop Nav */}
+            {user && (
+              <div className="hidden md:flex items-center gap-6 text-sm font-medium">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    className={cn(
+                      "transition-colors hover:text-foreground/80 flex items-center gap-2",
+                      location.pathname === link.path
+                        ? "text-foreground"
+                        : "text-foreground/60"
+                    )}
+                  >
+                    <link.icon className="h-4 w-4" />
+                    {link.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              {!user && (
+                <Link
+                  to="/login"
+                  className="text-sm font-medium text-foreground/60 hover:text-foreground transition-colors hidden sm:block"
+                >
+                  Sign In
+                </Link>
+              )}
+              <ThemeToggle />
+
+              {/* Mobile Hamburger Button */}
+              {user && (
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors"
+                  aria-label="Toggle menu"
+                >
+                  {mobileMenuOpen ? (
+                    <X className="h-5 w-5" />
+                  ) : (
+                    <Menu className="h-5 w-5" />
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Nav Drawer */}
+        <AnimatePresence>
+          {mobileMenuOpen && user && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden border-t border-border/40 bg-background/98 backdrop-blur-xl overflow-hidden"
+            >
+              <div className="container mx-auto px-4 py-4 flex flex-col gap-1">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    onClick={closeMobile}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
+                      location.pathname === link.path
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <link.icon className="h-5 w-5" />
+                    {link.name}
+                  </Link>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </nav>
+
+      <main className="flex-1 flex flex-col relative overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 flex flex-col"
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
+      </main>
+
+      <footer className="border-t border-border/40 py-6 mt-auto bg-background/50">
+        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            <p>© {new Date().getFullYear()} Deep Fashion. All rights reserved.</p>
+          </div>
+          <div className="flex gap-4">
+            <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
+            <a href="#" className="hover:text-foreground transition-colors">Terms</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

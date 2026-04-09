@@ -1,0 +1,190 @@
+import { createContext, useContext, useState, useEffect } from "react";
+import { API_BASE_URL } from "@/config";
+
+const AppContext = createContext(undefined);
+
+export function AppProvider({ children }) {
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem("user");
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+
+  // Fetch actual Mongo profile on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const stored = localStorage.getItem("user");
+      if (!stored) {
+        setIsLoadingProfile(false);
+        return;
+      }
+
+      const parsedUser = JSON.parse(stored);
+      if (!parsedUser.token) {
+        setIsLoadingProfile(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+          headers: {
+            Authorization: `Bearer ${parsedUser.token}`,
+          },
+        });
+
+        if (response.ok) {
+          const profileData = await response.json();
+          const fullUser = { ...profileData, token: parsedUser.token };
+          setUser(fullUser);
+          localStorage.setItem("user", JSON.stringify(fullUser));
+        } else {
+          logout();
+        }
+      } catch (err) {
+        console.error("Failed to fetch fresh profile data:", err);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  const loginUser = (userData) => {
+    setUser(userData);
+    localStorage.setItem("user", JSON.stringify(userData));
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+  };
+
+  // Uploads — loaded from localStorage, no mock fallback
+  const [uploads, setUploads] = useState(() => {
+    const saved = localStorage.getItem("Deep fashion-uploads");
+    if (saved) return JSON.parse(saved);
+    return [];
+  });
+
+  const [latestUpload, setLatestUpload] = useState(() => {
+    const saved = localStorage.getItem("Deep fashion-uploads");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.length > 0) return parsed[0];
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("Deep fashion-uploads", JSON.stringify(uploads));
+  }, [uploads]);
+
+  const addUpload = (upload) => {
+    setUploads((prev) => [upload, ...prev]);
+    setLatestUpload(upload);
+  };
+
+  const [recommendations, setRecommendations] = useState([]);
+
+  // Favorites state
+  const [favorites, setFavorites] = useState([]);
+
+  const fetchFavorites = async () => {
+    if (!user?.token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/favorites`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFavorites(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch favorites:", err);
+    }
+  };
+
+  const addFavorite = async (item) => {
+    if (!user?.token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/favorites`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.token}`,
+        },
+        body: JSON.stringify(item),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFavorites(data);
+        return true;
+      } else {
+        const err = await res.json();
+        console.warn(err.message);
+        return false;
+      }
+    } catch (err) {
+      console.error("Failed to add favorite:", err);
+      return false;
+    }
+  };
+
+  const removeFavorite = async (id) => {
+    if (!user?.token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/favorites/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFavorites(data);
+      }
+    } catch (err) {
+      console.error("Failed to remove favorite:", err);
+    }
+  };
+
+  // Load favorites when user changes
+  useEffect(() => {
+    if (user?.token) {
+      fetchFavorites();
+    } else {
+      setFavorites([]);
+    }
+  }, [user?.token]);
+
+  return (
+    <AppContext.Provider
+      value={{
+        uploads,
+        addUpload,
+        latestUpload,
+        recommendations,
+        setRecommendations,
+        user,
+        loginUser,
+        logout,
+        isLoadingProfile,
+        favorites,
+        addFavorite,
+        removeFavorite,
+        fetchFavorites,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+export function useAppContext() {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error("useAppContext must be used within an AppProvider");
+  }
+  return context;
+}

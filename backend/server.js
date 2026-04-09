@@ -1,19 +1,61 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 const connectDB = require("./config/db");
+const validateEnv = require("./config/validateEnv");
 
 dotenv.config();
-// connectDB(); // Mocking DB in User.js directly
+
+// Validate environment variables before anything else
+validateEnv();
+
+// Connect to MongoDB
+connectDB();
 
 const app = express();
 
+// Rate limiting — 100 requests per 15 minutes per IP
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests, please try again later." },
+});
+
+// Custom NoSQL injection sanitizer (express-mongo-sanitize is incompatible with Express 5)
+function sanitizeObject(obj) {
+  if (obj && typeof obj === "object") {
+    for (const key of Object.keys(obj)) {
+      if (key.startsWith("$") || key.includes(".")) {
+        delete obj[key];
+      } else if (typeof obj[key] === "object") {
+        sanitizeObject(obj[key]);
+      }
+    }
+  }
+  return obj;
+}
+
+function mongoSanitize(req, res, next) {
+  if (req.body) sanitizeObject(req.body);
+  if (req.params) sanitizeObject(req.params);
+  next();
+}
+
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 app.use(cors());
+app.use(limiter);
+app.use(mongoSanitize); // Prevent NoSQL injection
 
 // Routes
-app.use("/api/users", require("./routes/userRoutes"));
+app.use("/api/users", require("./routes/userroutes"));
+app.use("/api/search", require("./routes/searchRoutes"));
+app.use("/api/activity", require("./routes/activityRoutes"));
+app.use("/api/favorites", require("./routes/favoritesRoutes"));
+app.use("/api/history", require("./routes/historyRoutes"));
 
 // Test route
 app.get("/", (req, res) => {
