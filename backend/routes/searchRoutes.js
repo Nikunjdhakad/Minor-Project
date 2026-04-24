@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, optionalAuth } = require("../middleware/authMiddleware");
 const { visualSearch } = require("../controllers/searchController");
 const { generateTryOn } = require("../controllers/tryonController");
 
@@ -26,7 +26,7 @@ const upload = multer({
 });
 
 // Define Visual Search endpoint
-router.post("/visual", protect, upload.single("image"), visualSearch);
+router.post("/visual", optionalAuth, upload.single("image"), visualSearch);
 
 // Define Try-on endpoint (JSON body instead of multer stream)
 router.post("/try-on", protect, generateTryOn);

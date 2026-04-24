@@ -2,47 +2,44 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAppContext } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shirt, Image as ImageIcon, Sparkles, LayoutDashboard, Settings, User, Bell, LogOut, BarChart3, Heart, Clock } from "lucide-react";
-import { Link } from "react-router-dom";
+import {
+  Image as ImageIcon, Sparkles, BarChart3, Heart, Clock,
+  Upload, ArrowRight, TrendingUp, Eye, ShoppingBag, Camera,
+} from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
 
-const container = {
+const stagger = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.1 } },
+  show: { opacity: 1, transition: { staggerChildren: 0.08 } },
 };
 
-const itemVariant = {
-  hidden: { opacity: 0, y: 20 },
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
   show: { opacity: 1, y: 0 },
 };
 
 export default function DashboardPage() {
-  const { uploads, user, logout, favorites } = useAppContext();
+  const { uploads, user, favorites, setRecommendations, addUpload } = useAppContext();
+  const navigate = useNavigate();
   const [activityData, setActivityData] = useState(null);
   const [isLoadingActivity, setIsLoadingActivity] = useState(true);
 
   const totalItems = uploads.reduce((acc, curr) => acc + (curr.itemsDetected || 0), 0);
-
-  const userName = user?.name || user?.username || "Your";
-  const userStyleLevel = user?.styleLevel || "Fashion Forward";
-  const userUploadsCount = user?.uploadsCount !== undefined ? user.uploadsCount : uploads.length;
+  const displayName = user?.name || user?.username || "User";
+  const uploadsCount = user?.uploadsCount !== undefined ? user.uploadsCount : uploads.length;
 
   // Fetch real activity data
   useEffect(() => {
     const fetchActivity = async () => {
-      if (!user?.token) {
-        setIsLoadingActivity(false);
-        return;
-      }
+      if (!user?.token) { setIsLoadingActivity(false); return; }
       try {
         const res = await fetch(`${API_BASE_URL}/api/activity`, {
           headers: { Authorization: `Bearer ${user.token}` },
         });
-        if (res.ok) {
-          const data = await res.json();
-          setActivityData(data);
-        }
+        if (res.ok) setActivityData(await res.json());
       } catch (err) {
         console.error("Failed to fetch activity:", err);
       } finally {
@@ -52,164 +49,174 @@ export default function DashboardPage() {
     fetchActivity();
   }, [user?.token]);
 
-  // Compute chart data from real activity
   const chartData = activityData?.daily || [];
   const maxCount = Math.max(...chartData.map((d) => d.count), 1);
 
+  // Greeting based on time
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
+
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] w-full relative">
-      {/* Sidebar Navigation */}
-      <motion.aside
-        initial={{ x: -100, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        className="w-64 border-r border-border/50 bg-card/30 backdrop-blur-xl hidden lg:flex flex-col p-6 space-y-8"
+    <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full space-y-8">
+
+      {/* ── Welcome Header ── */}
+      <motion.div
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
-        <div className="space-y-4">
-          <h3 className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Menu</h3>
-          <nav className="space-y-2">
-            <Link to="/dashboard" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary font-medium transition-colors">
-              <LayoutDashboard className="h-5 w-5" />
-              <span>Dashboard</span>
-            </Link>
-            <Link to="/profile-setup" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors group">
-              <User className="h-5 w-5 group-hover:scale-110 transition-transform" />
-              <span>Profile Setup</span>
-            </Link>
-            <Link to="/history" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors group">
-              <Clock className="h-5 w-5 group-hover:scale-110 transition-transform" />
-              <span>Search History</span>
-            </Link>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors group">
-              <Bell className="h-5 w-5 group-hover:scale-110 transition-transform" />
-              <span>Notifications</span>
-            </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors group">
-              <Settings className="h-5 w-5 group-hover:scale-110 transition-transform" />
-              <span>Settings</span>
-            </button>
-          </nav>
-        </div>
-        <div className="mt-auto pt-6 border-t border-border/50">
-          <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors group">
-            <LogOut className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </motion.aside>
-
-      {/* Main Content */}
-      <div className="flex-1 p-4 md:p-8 space-y-8 max-w-6xl overflow-y-auto">
-        {/* User Info */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-card/50 backdrop-blur-md border border-border/50 p-6 rounded-[2rem] shadow-xl"
-        >
-          <div className="flex items-center gap-5">
-            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 p-1 shadow-lg">
-              <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random`} alt="User Avatar" className="h-full w-full rounded-full object-cover border-2 border-background" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">{userName === "Your" ? "Your" : `${userName}'s`} Dashboard</h1>
-              <p className="text-muted-foreground font-medium">Style Level: {userStyleLevel} <Sparkles className="inline h-4 w-4 text-yellow-500 ml-1" /></p>
-            </div>
+        <div className="flex items-center gap-4">
+          <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-lg shadow-indigo-500/20 shrink-0">
+            <img
+              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random&size=112&bold=true`}
+              alt="Avatar"
+              className="h-full w-full rounded-[14px] object-cover border-2 border-background"
+            />
           </div>
-          <Link to="/profile-setup">
-            <button className="px-6 py-2.5 bg-background shadow-sm border border-border hover:bg-secondary rounded-full font-medium transition-all text-sm hover:scale-105">
-              Edit Profile
-            </button>
-          </Link>
-        </motion.div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              {greeting}, {displayName}
+            </h1>
+            <p className="text-muted-foreground text-sm flex items-center gap-1.5 mt-0.5">
+              <Sparkles className="h-3.5 w-3.5 text-yellow-500" />
+              {user?.styleLevel || "Fashion Forward"}
+            </p>
+          </div>
+        </div>
+        <Link to="/upload">
+          <Button className="rounded-xl gap-2 h-11 px-6 shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform font-semibold">
+            <Camera className="h-4 w-4" />
+            New Search
+          </Button>
+        </Link>
+      </motion.div>
 
-        {/* Stats Cards */}
-        <motion.div variants={container} initial="hidden" animate="show" className="grid gap-6 md:grid-cols-4">
-          <motion.div variants={itemVariant}>
-            <Card className="bg-card/50 backdrop-blur-sm border-border/50 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Uploads</CardTitle>
-                <ImageIcon className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{userUploadsCount}</div>
+      {/* ── Stats Row ── */}
+      <motion.div variants={stagger} initial="hidden" animate="show" className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: "Uploads", value: uploadsCount, icon: ImageIcon, color: "text-blue-500", bg: "bg-blue-500/10" },
+          { label: "Items Found", value: totalItems, icon: Eye, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+          { label: "Favorites", value: favorites.length, icon: Heart, color: "text-pink-500", bg: "bg-pink-500/10" },
+          { label: "Sessions", value: activityData?.totalActivity || 0, icon: TrendingUp, color: "text-amber-500", bg: "bg-amber-500/10" },
+        ].map((stat) => (
+          <motion.div key={stat.label} variants={fadeUp}>
+            <Card className="bg-card/50 backdrop-blur-sm border-border/40 hover:shadow-md transition-shadow">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{stat.label}</span>
+                  <div className={`h-8 w-8 rounded-lg ${stat.bg} flex items-center justify-center`}>
+                    <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                  </div>
+                </div>
+                <p className="text-3xl font-bold tracking-tight">{stat.value}</p>
               </CardContent>
             </Card>
           </motion.div>
+        ))}
+      </motion.div>
 
-          <motion.div variants={itemVariant}>
-            <Card className="bg-card/50 backdrop-blur-sm border-border/50 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Items Detected</CardTitle>
-                <Shirt className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{totalItems}</div>
-              </CardContent>
-            </Card>
-          </motion.div>
+      {/* ── Quick Actions ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
+        <div className="grid sm:grid-cols-3 gap-4">
+          {[
+            {
+              title: "Visual Search",
+              desc: "Find products by uploading a photo",
+              icon: Upload,
+              path: "/upload",
+              gradient: "from-indigo-500/10 to-purple-500/10",
+              iconColor: "text-indigo-500",
+            },
+            {
+              title: "Style Matches",
+              desc: "Browse your curated outfit matches",
+              icon: ShoppingBag,
+              path: "/recommendations",
+              gradient: "from-pink-500/10 to-rose-500/10",
+              iconColor: "text-pink-500",
+            },
+            {
+              title: "Search History",
+              desc: "Review your past searches & results",
+              icon: Clock,
+              path: "/history",
+              gradient: "from-amber-500/10 to-orange-500/10",
+              iconColor: "text-amber-500",
+            },
+          ].map((action) => (
+            <Link key={action.path} to={action.path}>
+              <Card className={`group h-full bg-gradient-to-br ${action.gradient} border-border/30 hover:border-primary/30 hover:shadow-lg transition-all cursor-pointer`}>
+                <CardContent className="p-5 flex flex-col h-full">
+                  <div className={`h-10 w-10 rounded-xl bg-background/80 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm`}>
+                    <action.icon className={`h-5 w-5 ${action.iconColor}`} />
+                  </div>
+                  <h3 className="font-semibold text-base mb-1 group-hover:text-primary transition-colors">{action.title}</h3>
+                  <p className="text-xs text-muted-foreground flex-1">{action.desc}</p>
+                  <div className="flex items-center gap-1 text-xs font-medium text-primary mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Go <ArrowRight className="h-3 w-3" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </motion.div>
 
-          <motion.div variants={itemVariant}>
-            <Card className="bg-card/50 backdrop-blur-sm border-border/50 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Favorites</CardTitle>
-                <Heart className="h-4 w-4 text-pink-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{favorites.length}</div>
-              </CardContent>
-            </Card>
-          </motion.div>
+      {/* ── Activity Chart + Recent Uploads (2-col on desktop) ── */}
+      <div className="grid lg:grid-cols-5 gap-6">
 
-          <motion.div variants={itemVariant}>
-            <Card className="bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-[1.02] transition-all">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-primary-foreground/80">Total Activity</CardTitle>
-                <Sparkles className="h-4 w-4 text-primary-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{activityData?.totalActivity || 0}</div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </motion.div>
-
-        {/* Activity Chart — Real Data */}
-        <motion.div variants={itemVariant} initial="hidden" animate="show" transition={{ delay: 0.3 }}>
-          <Card className="bg-card/40 backdrop-blur-sm border-border/50 shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between">
+        {/* Activity Chart */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="lg:col-span-3"
+        >
+          <Card className="bg-card/40 backdrop-blur-sm border-border/40 h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div>
-                <CardTitle>Activity Overview</CardTitle>
-                <CardDescription>Your sessions over the last 7 days</CardDescription>
+                <CardTitle className="text-base">Weekly Activity</CardTitle>
+                <CardDescription className="text-xs">Your sessions over the last 7 days</CardDescription>
               </div>
-              <BarChart3 className="h-5 w-5 text-muted-foreground" />
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               {isLoadingActivity ? (
-                <div className="h-64 w-full flex items-end justify-between gap-2 pt-8">
+                <div className="h-48 w-full flex items-end justify-between gap-3 pt-6">
                   {Array.from({ length: 7 }).map((_, i) => (
                     <div key={i} className="w-full flex flex-col items-center gap-2">
-                      <Skeleton className="w-full max-w-[3rem] h-20 rounded-t-md" />
-                      <Skeleton className="h-3 w-8" />
+                      <Skeleton className="w-full max-w-[2.5rem] h-16 rounded-t-lg" />
+                      <Skeleton className="h-3 w-6" />
                     </div>
                   ))}
                 </div>
+              ) : chartData.length === 0 ? (
+                <div className="h-48 flex flex-col items-center justify-center text-center">
+                  <BarChart3 className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                  <p className="text-sm text-muted-foreground">No activity data yet</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Start uploading to see your activity chart</p>
+                </div>
               ) : (
-                <div className="h-64 w-full flex items-end justify-between gap-2 pt-8">
+                <div className="h-48 w-full flex items-end justify-between gap-3 pt-6">
                   {chartData.map((item, i) => {
                     const heightPct = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
                     return (
                       <div key={i} className="relative w-full flex flex-col items-center gap-2 group">
-                        <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-popover text-popover-foreground text-xs px-2 py-1 rounded shadow-lg pointer-events-none z-10">
+                        <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-foreground text-background text-[11px] px-2 py-0.5 rounded-md shadow-lg pointer-events-none z-10 font-semibold whitespace-nowrap">
                           {item.count} {item.count === 1 ? "session" : "sessions"}
                         </div>
                         <motion.div
                           initial={{ height: 0 }}
-                          animate={{ height: `${Math.max(heightPct, 4)}%` }}
-                          transition={{ duration: 1, delay: 0.4 + i * 0.1, ease: "easeOut" }}
-                          className="w-full max-w-[3rem] bg-primary/20 rounded-t-md hover:bg-primary transition-colors cursor-pointer"
-                        >
-                          <div className="w-full h-full bg-gradient-to-t from-primary/10 to-primary/40 rounded-t-md" />
-                        </motion.div>
-                        <span className="text-xs text-muted-foreground font-medium">{item.day}</span>
+                          animate={{ height: `${Math.max(heightPct, 6)}%` }}
+                          transition={{ duration: 0.8, delay: 0.4 + i * 0.08, ease: "easeOut" }}
+                          className="w-full max-w-[2.5rem] rounded-t-lg bg-gradient-to-t from-primary/60 to-primary/20 hover:from-primary hover:to-primary/60 transition-colors cursor-pointer"
+                        />
+                        <span className="text-[11px] text-muted-foreground font-medium">{item.day}</span>
                       </div>
                     );
                   })}
@@ -220,53 +227,76 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Recent Uploads */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="pt-6">
-          <h2 className="text-2xl font-semibold tracking-tight mb-6">Recent Uploads</h2>
-          <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden shadow-lg">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-muted/50 text-muted-foreground border-b border-border/50">
-                <tr>
-                  <th className="px-6 py-5 font-medium">Upload ID</th>
-                  <th className="px-6 py-5 font-medium">Date</th>
-                  <th className="px-6 py-5 font-medium">Items Detected</th>
-                  <th className="px-6 py-5 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50">
-                {uploads.length > 0 ? (
-                  uploads.map((item) => (
-                    <tr key={item.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-6 py-5 font-medium flex items-center gap-3">
-                        {item.imageUrl && (
-                          <div className="h-8 w-8 rounded overflow-hidden flex-shrink-0 border border-border">
-                            <img src={item.imageUrl} alt="upload" className="h-full w-full object-cover" loading="lazy" />
-                          </div>
-                        )}
-                        {item.id}
-                      </td>
-                      <td className="px-6 py-5 text-muted-foreground">{item.date}</td>
-                      <td className="px-6 py-5">{item.itemsDetected}</td>
-                      <td className="px-6 py-5">
-                        <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="lg:col-span-2"
+        >
+          <Card className="bg-card/40 backdrop-blur-sm border-border/40 h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle className="text-base">Recent Uploads</CardTitle>
+                <CardDescription className="text-xs">Click to view products</CardDescription>
+              </div>
+              <ImageIcon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {uploads.length > 0 ? (
+                <div className="space-y-3">
+                  {uploads.slice(0, 5).map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        if (item.matches && item.matches.length > 0) {
+                          setRecommendations(item.matches);
+                          addUpload({ ...item });
+                          navigate("/recommendations");
+                        }
+                      }}
+                      className={`flex items-center gap-3 p-2.5 rounded-xl transition-colors group ${item.matches?.length > 0 ? "cursor-pointer hover:bg-primary/5" : "opacity-70"}`}
+                    >
+                      {item.imageUrl ? (
+                        <div className="h-10 w-10 rounded-lg overflow-hidden border border-border/50 shrink-0 bg-muted">
+                          <img src={item.imageUrl} alt="upload" className="h-full w-full object-cover group-hover:scale-110 transition-transform" loading="lazy" />
+                        </div>
+                      ) : (
+                        <div className="h-10 w-10 rounded-lg bg-muted/50 flex items-center justify-center shrink-0">
+                          <ImageIcon className="h-4 w-4 text-muted-foreground/50" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{item.id}</p>
+                        <p className="text-[11px] text-muted-foreground">{item.date} · {item.itemsDetected} item{item.itemsDetected !== 1 ? "s" : ""}</p>
+                      </div>
+                      {item.matches?.length > 0 ? (
+                        <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                      ) : (
+                        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
                           {item.status}
                         </span>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
-                      <div className="flex flex-col items-center gap-3">
-                        <ImageIcon className="h-10 w-10 text-muted-foreground/40" />
-                        <p>No uploads yet.</p>
-                        <Link to="/upload" className="text-primary hover:underline font-medium">Upload your first outfit →</Link>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                      )}
+                    </div>
+                  ))}
+                  {uploads.length > 5 && (
+                    <Link to="/history" className="block text-center text-xs text-primary hover:underline font-medium pt-1">
+                      View all uploads →
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className="h-48 flex flex-col items-center justify-center text-center">
+                  <div className="h-12 w-12 rounded-full bg-muted/40 flex items-center justify-center mb-3">
+                    <Camera className="h-6 w-6 text-muted-foreground/40" />
+                  </div>
+                  <p className="text-sm text-muted-foreground font-medium">No uploads yet</p>
+                  <Link to="/upload" className="text-xs text-primary hover:underline font-medium mt-2 flex items-center gap-1">
+                    Upload your first outfit <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </motion.div>
       </div>
     </div>

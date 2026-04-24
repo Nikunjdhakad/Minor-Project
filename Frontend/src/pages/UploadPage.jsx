@@ -18,18 +18,17 @@ export default function UploadPage() {
     setIsUploading(true);
 
     try {
-      if (!user) {
-        throw new Error("You must be logged in to analyze outfits.");
-      }
-
       const formData = new FormData();
       formData.append("image", file);
 
+      const headers = {};
+      if (user?.token) {
+        headers.Authorization = `Bearer ${user.token}`;
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/search/visual`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
+        headers,
         body: formData,
       });
 
@@ -49,6 +48,7 @@ export default function UploadPage() {
         itemsDetected: data.itemsDetected || 1,
         status: "Analyzed",
         imageUrl: url,
+        matches: data.matches,
       });
 
       setTimeout(() => {
@@ -95,9 +95,9 @@ export default function UploadPage() {
         className="w-full space-y-8 text-center"
       >
         <div className="space-y-4">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Try-On Analysis</h1>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Visual Search</h1>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-            Upload a photo of your outfit, and our AI will analyze the style, colors, and fit to provide personalized recommendations.
+            Upload a photo of any outfit or clothing item, and our AI will find matching products from top fashion retailers.
           </p>
         </div>
 

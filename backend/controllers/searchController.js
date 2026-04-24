@@ -115,19 +115,21 @@ const visualSearch = async (req, res) => {
     const itemsDetected =
       finalMatches.length > 0 ? (finalMatches.length > 5 ? 3 : 1) : 0;
 
-    // 6. Log activity and save search history
-    await Promise.all([
-      logActivity(req.user._id, "search", {
-        imageUrl,
-        matchesCount: formattedMatches.length,
-      }),
-      saveSearchHistory(req.user._id, imageUrl, formattedMatches),
-    ]);
+    // 6. Log activity and save search history (only for logged-in users)
+    if (req.user) {
+      await Promise.all([
+        logActivity(req.user._id, "search", {
+          imageUrl,
+          matchesCount: formattedMatches.length,
+        }),
+        saveSearchHistory(req.user._id, imageUrl, formattedMatches),
+      ]);
 
-    // 7. Increment user upload count
-    await User.findByIdAndUpdate(req.user._id, {
-      $inc: { uploadsCount: 1 },
-    });
+      // 7. Increment user upload count
+      await User.findByIdAndUpdate(req.user._id, {
+        $inc: { uploadsCount: 1 },
+      });
+    }
 
     res.json({
       uploadUrl: imageUrl,

@@ -4,8 +4,9 @@ import { useAppContext } from "@/context/AppContext";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, Reply, ShoppingBag, ImageIcon } from "lucide-react";
+import { Heart, Reply, ShoppingBag } from "lucide-react";
 import { Link } from "react-router-dom";
+import AuthPromptModal from "@/components/AuthPromptModal";
 
 const container = {
   hidden: { opacity: 0 },
@@ -18,11 +19,24 @@ const item = {
 };
 
 export default function RecommendationsPage() {
-  const { recommendations, latestUpload, addFavorite, favorites } = useAppContext();
+  const { recommendations, latestUpload, addFavorite, favorites, user } = useAppContext();
   const outfits = recommendations?.length > 0 ? recommendations : [];
   const [savingId, setSavingId] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authAction, setAuthAction] = useState("continue");
+
+  const requireAuth = (actionLabel) => {
+    if (!user) {
+      setAuthAction(actionLabel);
+      setShowAuthModal(true);
+      return true;
+    }
+    return false;
+  };
 
   const handleFavorite = async (outfit) => {
+    if (requireAuth("save to favorites")) return;
+
     setSavingId(outfit.id);
     await addFavorite({
       imageUrl: outfit.imageUrl,
@@ -34,6 +48,12 @@ export default function RecommendationsPage() {
       tags: outfit.tags,
     });
     setSavingId(null);
+  };
+
+  const handleShopClick = (e, outfit) => {
+    if (requireAuth("shop this look")) {
+      e.preventDefault();
+    }
   };
 
   const isFavorited = (outfit) => {
@@ -127,7 +147,12 @@ export default function RecommendationsPage() {
               </CardContent>
               <CardFooter className="pt-0 pb-6 px-6 gap-2">
                 <Button asChild className="flex-1 rounded-xl shadow-lg hover:scale-[1.02] transition-transform">
-                  <a href={outfit.shopLink || "#"} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={outfit.shopLink || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => handleShopClick(e, outfit)}
+                  >
                     <ShoppingBag className="mr-2 h-4 w-4" /> Shop Look
                   </a>
                 </Button>
@@ -145,6 +170,13 @@ export default function RecommendationsPage() {
           </motion.div>
         ))}
       </motion.div>
+
+      {/* Auth Prompt Modal */}
+      <AuthPromptModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        action={authAction}
+      />
     </div>
   );
 }

@@ -1,25 +1,34 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Sparkles, LayoutDashboard, Upload, Heart, User, Menu, X } from "lucide-react";
+import { Sparkles, LayoutDashboard, Upload, Heart, User, Menu, X, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useAppContext } from "@/context/AppContext";
 
 export default function AppLayout() {
   const location = useLocation();
-  const { user } = useAppContext();
+  const { user, logout } = useAppContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navLinks = [
-    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-    { name: "Try-On", path: "/upload", icon: Upload },
+  // Public nav links — always visible
+  const publicNavLinks = [
+    { name: "Search", path: "/upload", icon: Upload },
     { name: "Studio", path: "/studio", icon: Sparkles },
     { name: "Matches", path: "/recommendations", icon: Heart },
+  ];
+
+  // Auth-only nav links — visible only when logged in
+  const authNavLinks = [
+    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { name: "Profile", path: "/profile-setup", icon: User },
   ];
 
+  const navLinks = user ? [...publicNavLinks, ...authNavLinks] : publicNavLinks;
+
   const closeMobile = () => setMobileMenuOpen(false);
+
+  const displayName = user?.name || user?.username || "User";
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/20">
@@ -34,58 +43,83 @@ export default function AppLayout() {
 
           <div className="flex items-center gap-6">
             {/* Desktop Nav */}
-            {user && (
-              <div className="hidden md:flex items-center gap-6 text-sm font-medium">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.path}
-                    to={link.path}
-                    className={cn(
-                      "transition-colors hover:text-foreground/80 flex items-center gap-2",
-                      location.pathname === link.path
-                        ? "text-foreground"
-                        : "text-foreground/60"
-                    )}
-                  >
-                    <link.icon className="h-4 w-4" />
-                    {link.name}
-                  </Link>
-                ))}
-              </div>
-            )}
+            <div className="hidden md:flex items-center gap-5 text-sm font-medium">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={cn(
+                    "transition-colors hover:text-foreground/80 flex items-center gap-2",
+                    location.pathname === link.path
+                      ? "text-foreground"
+                      : "text-foreground/60"
+                  )}
+                >
+                  <link.icon className="h-4 w-4" />
+                  {link.name}
+                </Link>
+              ))}
+            </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
+              {/* Sign In — for guests */}
               {!user && (
                 <Link
                   to="/login"
-                  className="text-sm font-medium text-foreground/60 hover:text-foreground transition-colors hidden sm:block"
+                  className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all"
                 >
                   Sign In
                 </Link>
               )}
+
+              {/* User avatar + sign out — for logged-in users (desktop) */}
+              {user && (
+                <div className="hidden md:flex items-center gap-2">
+                  <Link
+                    to="/profile-setup"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-muted/60 transition-colors"
+                  >
+                    <div className="h-7 w-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 p-[2px] shadow-sm">
+                      <img
+                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random&size=64&bold=true`}
+                        alt="Avatar"
+                        className="h-full w-full rounded-full object-cover border border-background"
+                      />
+                    </div>
+                    <span className="text-sm font-medium max-w-[100px] truncate">{displayName}</span>
+                  </Link>
+                  <button
+                    onClick={logout}
+                    className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                    title="Sign Out"
+                    aria-label="Sign Out"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
               <ThemeToggle />
 
-              {/* Mobile Hamburger Button */}
-              {user && (
-                <button
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors"
-                  aria-label="Toggle menu"
-                >
-                  {mobileMenuOpen ? (
-                    <X className="h-5 w-5" />
-                  ) : (
-                    <Menu className="h-5 w-5" />
-                  )}
-                </button>
-              )}
+              {/* Mobile Hamburger */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors"
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
+              </button>
             </div>
           </div>
         </div>
 
         {/* Mobile Nav Drawer */}
         <AnimatePresence>
-          {mobileMenuOpen && user && (
+          {mobileMenuOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
@@ -94,6 +128,23 @@ export default function AppLayout() {
               className="md:hidden border-t border-border/40 bg-background/98 backdrop-blur-xl overflow-hidden"
             >
               <div className="container mx-auto px-4 py-4 flex flex-col gap-1">
+                {/* User info bar (mobile) */}
+                {user && (
+                  <div className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl bg-muted/30 border border-border/30">
+                    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 p-[2px] shadow-sm shrink-0">
+                      <img
+                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random&size=64&bold=true`}
+                        alt="Avatar"
+                        className="h-full w-full rounded-full object-cover border border-background"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{displayName}</p>
+                      <p className="text-xs text-muted-foreground">@{user?.username || "user"}</p>
+                    </div>
+                  </div>
+                )}
+
                 {navLinks.map((link) => (
                   <Link
                     key={link.path}
@@ -110,6 +161,29 @@ export default function AppLayout() {
                     {link.name}
                   </Link>
                 ))}
+
+                {/* Sign In (mobile guest) */}
+                {!user && (
+                  <Link
+                    to="/login"
+                    onClick={closeMobile}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary/90 transition-colors mt-2"
+                  >
+                    <User className="h-5 w-5" />
+                    Sign In / Sign Up
+                  </Link>
+                )}
+
+                {/* Sign Out (mobile logged-in) */}
+                {user && (
+                  <button
+                    onClick={() => { closeMobile(); logout(); }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors mt-2 border border-destructive/20"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    Sign Out
+                  </button>
+                )}
               </div>
             </motion.div>
           )}

@@ -1,256 +1,240 @@
-import { useState, useRef, useEffect } from "react";
-import { motion, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
-import { useAppContext } from "@/context/AppContext";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { motion } from "framer-motion";
+import { Sparkles, Rotate3D, Shirt, Camera, Layers, Zap, ArrowRight, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Shirt, Sparkles, Box, ScanLine, Compass, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
-import { API_BASE_URL } from "@/config";
+import { useState } from "react";
+
+const features = [
+  {
+    icon: Rotate3D,
+    title: "3D Body Modeling",
+    desc: "Generate a realistic 3D avatar from your photos for an accurate virtual fitting experience.",
+    color: "text-indigo-500",
+    bg: "bg-indigo-500/10",
+  },
+  {
+    icon: Shirt,
+    title: "Virtual Try-On",
+    desc: "See how any clothing item looks on your 3D model before buying — from any angle.",
+    color: "text-purple-500",
+    bg: "bg-purple-500/10",
+  },
+  {
+    icon: Camera,
+    title: "AR Preview",
+    desc: "Use augmented reality to visualize outfits in your environment in real time.",
+    color: "text-pink-500",
+    bg: "bg-pink-500/10",
+  },
+  {
+    icon: Layers,
+    title: "Mix & Match",
+    desc: "Combine tops, bottoms, and accessories to build complete outfits on your avatar.",
+    color: "text-amber-500",
+    bg: "bg-amber-500/10",
+  },
+];
+
+const timeline = [
+  { phase: "Phase 1", label: "3D Avatar Generation", status: "in-progress" },
+  { phase: "Phase 2", label: "Virtual Garment Fitting", status: "upcoming" },
+  { phase: "Phase 3", label: "AR Live Preview", status: "upcoming" },
+  { phase: "Phase 4", label: "Social Sharing", status: "upcoming" },
+];
 
 export default function TryOnStudio() {
-  const { latestUpload, recommendations, user } = useAppContext();
-  const outfits = recommendations?.length > 0 ? recommendations : [];
-
-  const [activeGarment, setActiveGarment] = useState(null);
-  const [isScanning, setIsScanning] = useState(true);
-  const [isEquipping, setIsEquipping] = useState(false);
-  const [renderedImage, setRenderedImage] = useState(null);
-
-  // 3D Tilt Effect
-  const cardRef = useRef(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const rotateX = useTransform(y, [-200, 200], [15, -15]);
-  const rotateY = useTransform(x, [-200, 200], [-15, 15]);
-
-  function handleMouse(event) {
-    const rect = cardRef.current?.getBoundingClientRect();
-    if (rect) {
-      x.set(event.clientX - rect.left - rect.width / 2);
-      y.set(event.clientY - rect.top - rect.height / 2);
-    }
-  }
-
-  function handleMouseLeave() {
-    x.set(0);
-    y.set(0);
-  }
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsScanning(false), 4000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const equipGarment = async (garment) => {
-    if (activeGarment?.id === garment.id) return;
-    setActiveGarment(garment);
-    setIsEquipping(true);
-    setRenderedImage(null);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/search/try-on`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${user?.token}`,
-        },
-        body: JSON.stringify({
-          personImage: latestUpload.imageUrl,
-          garmentImage: garment.imageUrl,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.generatedImage) {
-        setRenderedImage(data.generatedImage);
-      } else {
-        throw new Error(data.message || "Failed to generate try-on");
-      }
-    } catch (error) {
-      console.error("VTON Generation Error:", error);
-      alert("Try-On failed! Attempting to preview standard overlay.");
-      setRenderedImage(latestUpload.imageUrl);
-    } finally {
-      setIsEquipping(false);
-    }
-  };
-
-  if (!latestUpload) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] p-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-6 max-w-md"
-        >
-          <div className="h-24 w-24 mx-auto rounded-full bg-muted/50 flex items-center justify-center">
-            <Upload className="h-12 w-12 text-muted-foreground/40" />
-          </div>
-          <h2 className="text-3xl font-bold tracking-tight">No Avatar Yet</h2>
-          <p className="text-muted-foreground text-lg">
-            Upload a photo first to generate your virtual avatar and start trying on outfits.
-          </p>
-          <Link to="/upload">
-            <Button size="lg" className="rounded-full h-12 px-8 text-base font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
-              Upload a Photo
-            </Button>
-          </Link>
-        </motion.div>
-      </div>
-    );
-  }
+  const [notified, setNotified] = useState(false);
 
   return (
-    <div className="container mx-auto p-4 py-8 md:py-12 max-w-7xl min-h-[calc(100vh-6rem)] flex flex-col">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center">
-          <Box className="h-5 w-5 text-primary" />
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col">
+      {/* Hero Section */}
+      <div className="relative flex-1 flex flex-col items-center justify-center px-4 py-16 md:py-24 overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+            className="absolute -top-1/4 -right-1/4 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-indigo-500/5 to-purple-500/5 blur-3xl"
+          />
+          <motion.div
+            animate={{ rotate: -360 }}
+            transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
+            className="absolute -bottom-1/4 -left-1/4 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-pink-500/5 to-amber-500/5 blur-3xl"
+          />
         </div>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-pink-500">
-            Deep Fashion Try-On Studio
-          </h1>
-          <p className="text-muted-foreground text-sm">Real-time 3D Holographic Fitting</p>
+
+        <div className="relative z-10 max-w-3xl mx-auto text-center space-y-8">
+          {/* Badge */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-sm font-semibold"
+          >
+            <Zap className="h-4 w-4" />
+            Under Development
+          </motion.div>
+
+          {/* 3D Icon */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", damping: 15, stiffness: 200 }}
+            className="mx-auto"
+          >
+            <div className="relative h-28 w-28 mx-auto">
+              <motion.div
+                animate={{ rotateY: 360 }}
+                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                className="h-28 w-28 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-2xl shadow-indigo-500/30 flex items-center justify-center"
+              >
+                <Rotate3D className="h-14 w-14 text-white" />
+              </motion.div>
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-amber-500 flex items-center justify-center shadow-lg"
+              >
+                <Sparkles className="h-4 w-4 text-white" />
+              </motion.div>
+            </div>
+          </motion.div>
+
+          {/* Title */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="space-y-4"
+          >
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
+              3D Try-On{" "}
+              <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                Studio
+              </span>
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto leading-relaxed">
+              We're building a revolutionary 3D virtual try-on experience. Upload your photo, get a realistic 3D avatar, and try on any outfit before you buy.
+            </p>
+          </motion.div>
+
+          {/* CTA Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <Button
+              size="lg"
+              onClick={() => setNotified(true)}
+              disabled={notified}
+              className="rounded-xl h-12 px-8 font-semibold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform gap-2"
+            >
+              <Bell className="h-4 w-4" />
+              {notified ? "You'll be Notified!" : "Notify Me When Ready"}
+            </Button>
+            <Link to="/upload">
+              <Button variant="outline" size="lg" className="rounded-xl h-12 px-8 font-semibold gap-2 border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all">
+                Try Visual Search Instead
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </motion.div>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8 flex-1">
-        {/* Holographic Avatar Display */}
-        <div className="flex-1 flex flex-col items-center justify-center relative bg-black/40 rounded-[3rem] border border-white/5 overflow-hidden shadow-2xl backdrop-blur-3xl p-8">
+      {/* Features Grid */}
+      <div className="px-4 py-16 bg-muted/20 border-t border-border/30">
+        <div className="max-w-5xl mx-auto">
           <motion.div
-            ref={cardRef}
-            onMouseMove={handleMouse}
-            onMouseLeave={handleMouseLeave}
-            style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-            className="relative w-full max-w-sm aspect-[3/4] rounded-3xl overflow-hidden cursor-crosshair border border-white/10 shadow-[0_0_50px_rgba(99,102,241,0.2)]"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
           >
-            <img
-              src={renderedImage || latestUpload.imageUrl}
-              alt="Avatar Base"
-              className={`w-full h-full object-cover transition-opacity duration-1000 ${isScanning || isEquipping ? "opacity-30 mix-blend-luminosity" : "opacity-100"}`}
-              loading="lazy"
-            />
-
-            {isScanning && (
-              <div className="absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.2)_1px,transparent_1px)] bg-[size:20px_20px]" style={{ transform: "translateZ(50px)" }}>
-                <motion.div
-                  initial={{ top: "-10%" }}
-                  animate={{ top: "110%" }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_20px_cyan]"
-                />
-                <div className="absolute inset-0 flex items-center justify-center flex-col gap-4">
-                  <ScanLine className="h-12 w-12 text-cyan-400 animate-pulse" />
-                  <span className="text-cyan-400 font-mono tracking-widest text-sm bg-black/50 px-3 py-1 rounded">BUILDING 3D MESH</span>
-                </div>
-              </div>
-            )}
-
-            <AnimatePresence>
-              {activeGarment && !isScanning && !renderedImage && !isEquipping && (
-                <motion.div
-                  key={activeGarment.id}
-                  initial={{ opacity: 0, scale: 1.2, filter: "blur(10px)" }}
-                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, filter: "blur(10px)" }}
-                  transition={{ duration: 0.8 }}
-                  className="absolute inset-0 z-10 flex items-center justify-center p-8 pointer-events-none mix-blend-normal"
-                >
-                  <motion.img src={activeGarment.imageUrl} alt="garment" className="w-full h-full object-contain drop-shadow-2xl" style={{ transform: "translateZ(30px)" }} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-              {isEquipping && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0 z-20 bg-indigo-500/20 backdrop-blur-sm flex flex-col items-center justify-center gap-4"
-                >
-                  <Sparkles className="h-12 w-12 text-white animate-spin" />
-                  <span className="text-white font-mono text-sm tracking-widest bg-black/40 px-3 py-1 rounded">GENERATING PHOTOREALISTIC TRY-ON...</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-3">What's Coming</h2>
+            <p className="text-muted-foreground max-w-lg mx-auto">
+              Here's what the 3D Try-On Studio will offer once it's ready.
+            </p>
           </motion.div>
 
-          <div className="mt-8 flex gap-4 text-xs font-mono text-muted-foreground opacity-60">
-            <span>3D PROJECTION ACTIVE</span>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {features.map((feature, i) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm p-6 hover:shadow-lg hover:border-primary/20 transition-all group"
+              >
+                <div className={`h-11 w-11 rounded-xl ${feature.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                  <feature.icon className={`h-5 w-5 ${feature.color}`} />
+                </div>
+                <h3 className="font-semibold text-base mb-2">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
+      </div>
 
-        {/* Style Analysis & Wardrobe Panel */}
-        <div className="w-full lg:w-[450px] flex flex-col gap-6">
-          <Card className="bg-card/40 backdrop-blur-xl border-border/50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Compass className="h-5 w-5 text-indigo-400" />
-                <h3 className="font-semibold text-lg">AI Style Analysis</h3>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm text-muted-foreground mb-2">Personality Traits Detected</div>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20">Avant-Garde</Badge>
-                    <Badge variant="secondary" className="bg-pink-500/10 text-pink-400 hover:bg-pink-500/20">Minimalist</Badge>
-                    <Badge variant="secondary" className="bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20">Urban</Badge>
-                  </div>
+      {/* Development Timeline */}
+      <div className="px-4 py-16">
+        <div className="max-w-2xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-3">Development Roadmap</h2>
+            <p className="text-muted-foreground">Track our progress as we build this feature.</p>
+          </motion.div>
+
+          <div className="space-y-4">
+            {timeline.map((step, i) => (
+              <motion.div
+                key={step.phase}
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="flex items-center gap-4 p-4 rounded-xl border border-border/40 bg-card/30 backdrop-blur-sm"
+              >
+                {/* Status indicator */}
+                <div className="relative shrink-0">
+                  {step.status === "in-progress" ? (
+                    <div className="h-10 w-10 rounded-full bg-amber-500/10 border-2 border-amber-500 flex items-center justify-center">
+                      <motion.div
+                        animate={{ scale: [1, 1.3, 1] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                        className="h-3 w-3 rounded-full bg-amber-500"
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-10 w-10 rounded-full bg-muted/50 border-2 border-border/50 flex items-center justify-center">
+                      <div className="h-3 w-3 rounded-full bg-muted-foreground/30" />
+                    </div>
+                  )}
+                  {i < timeline.length - 1 && (
+                    <div className="absolute top-10 left-1/2 -translate-x-1/2 w-0.5 h-8 bg-border/40" />
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Color Silhouette Fit</span>
-                    <span className="text-green-400 font-mono">98%</span>
+
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{step.phase}</span>
+                    {step.status === "in-progress" && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                        IN PROGRESS
+                      </span>
+                    )}
                   </div>
-                  <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
-                    <motion.div initial={{ width: 0 }} animate={{ width: "98%" }} className="h-full bg-green-400" transition={{ delay: 1, duration: 2 }} />
-                  </div>
+                  <p className="font-semibold text-sm mt-0.5">{step.label}</p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Virtual Wardrobe */}
-          <div className="flex-1 flex flex-col">
-            <div className="flex items-center justify-between mb-4 px-2">
-              <h3 className="font-semibold text-lg flex items-center gap-2">
-                <Shirt className="h-5 w-5 text-primary" />
-                Virtual Wardrobe
-              </h3>
-              <span className="text-xs text-muted-foreground">{outfits.length} Matches</span>
-            </div>
-
-            {outfits.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Shirt className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                <p className="text-muted-foreground text-sm">No wardrobe items yet.</p>
-                <Link to="/upload" className="text-primary text-sm hover:underline mt-1">Upload to get matches →</Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4 overflow-y-auto pr-2 pb-2">
-                {outfits.map((outfit) => (
-                  <motion.div key={outfit.id} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} onClick={() => equipGarment(outfit)}>
-                    <Card className={`cursor-pointer overflow-hidden border-2 transition-all h-full ${activeGarment?.id === outfit.id ? "border-primary shadow-[0_0_20px_rgba(99,102,241,0.3)] bg-primary/5" : "border-border/30 hover:border-border"}`}>
-                      <div className="aspect-square bg-muted/30 p-4 relative">
-                        <img src={outfit.imageUrl} className="w-full h-full object-cover rounded-md mix-blend-luminosity hover:mix-blend-normal transition-all" alt={outfit.name} loading="lazy" />
-                        {activeGarment?.id === outfit.id && (
-                          <div className="absolute inset-0 bg-primary/20 backdrop-blur-[2px] flex items-center justify-center">
-                            <Badge className="bg-primary text-white font-bold">EQUIPPED</Badge>
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-3 text-center">
-                        <div className="font-medium text-sm truncate">{outfit.name}</div>
-                        <div className="text-xs text-muted-foreground">{outfit.matchScore}% Match</div>
-                      </div>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            )}
+              </motion.div>
+            ))}
           </div>
         </div>
       </div>

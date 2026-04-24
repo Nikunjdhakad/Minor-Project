@@ -59,7 +59,7 @@ export function AppProvider({ children }) {
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
-    window.location.href = "/login";
+    window.location.href = "/";
   };
 
   // Uploads — loaded from localStorage, no mock fallback

@@ -29,4 +29,25 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+// Optional auth — attaches user if token is present, but allows guests through
+const optionalAuth = async (req, res, next) => {
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    try {
+      const token = req.headers.authorization.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = await User.findById(decoded.id).select("-password");
+    } catch (error) {
+      // Token invalid — continue as guest
+      req.user = null;
+    }
+  } else {
+    req.user = null;
+  }
+  next();
+};
+
+module.exports = { protect, optionalAuth };
+

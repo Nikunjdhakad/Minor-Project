@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm as useHookForm } from "react-hook-form";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
 import { API_BASE_URL } from "@/config";
 
@@ -21,6 +21,8 @@ const formSchema = z.object({
 
 export default function LoginPage({ isSignup = false }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/dashboard";
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const { loginUser } = useAppContext();
@@ -88,7 +90,7 @@ export default function LoginPage({ isSignup = false }) {
       loginUser(data);
 
       setTimeout(() => {
-        navigate("/dashboard");
+        navigate(redirectTo);
       }, 300);
     } catch (err) {
       setError(err.message || "Failed to connect to server");
@@ -180,9 +182,9 @@ export default function LoginPage({ isSignup = false }) {
 
         <div className="mt-8 text-center text-sm text-muted-foreground">
           {isSignup ? (
-            <p>Already have an account?{" "}<Link to="/login" className="text-primary hover:underline font-medium">Sign in</Link></p>
+            <p>Already have an account?{" "}<Link to={`/login${redirectTo !== "/dashboard" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} className="text-primary hover:underline font-medium">Sign in</Link></p>
           ) : (
-            <p>Don't have an account?{" "}<Link to="/signup" className="text-primary hover:underline font-medium">Sign up</Link></p>
+            <p>Don't have an account?{" "}<Link to={`/signup${redirectTo !== "/dashboard" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} className="text-primary hover:underline font-medium">Sign up</Link></p>
           )}
         </div>
       </motion.div>

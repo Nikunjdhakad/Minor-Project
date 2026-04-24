@@ -5,8 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, Search, ShoppingBag, ImageIcon, ArrowRight, Calendar } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Clock, Search, ShoppingBag, ImageIcon, ArrowRight, Calendar, ExternalLink } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
 
 const container = {
@@ -20,7 +20,8 @@ const item = {
 };
 
 export default function SearchHistoryPage() {
-  const { user } = useAppContext();
+  const { user, setRecommendations, addUpload } = useAppContext();
+  const navigate = useNavigate();
   const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -60,6 +61,33 @@ export default function SearchHistoryPage() {
     const nextPage = page + 1;
     setPage(nextPage);
     fetchHistory(nextPage);
+  };
+
+  // Load search results back into recommendations and navigate
+  const viewResults = (entry) => {
+    const formatted = (entry.matches || []).map((match, index) => ({
+      id: match._id || index,
+      name: match.name || "Fashion Item",
+      imageUrl: match.imageUrl,
+      shopLink: match.shopLink,
+      price: match.price,
+      matchScore: match.matchScore || (99 - index * 2),
+      description: `${match.source || "Store"} • ${match.price || "Visit Site"}`,
+      tags: [match.source || "Shop", "Premium"],
+    }));
+
+    setRecommendations(formatted);
+
+    // Also set as latest upload so recommendations page shows the source image
+    addUpload({
+      id: `DF-HIST`,
+      date: new Date(entry.createdAt).toISOString().split("T")[0],
+      itemsDetected: formatted.length,
+      status: "From History",
+      imageUrl: entry.imageUrl,
+    });
+
+    navigate("/recommendations");
   };
 
   const formatDate = (dateStr) => {
@@ -126,7 +154,7 @@ export default function SearchHistoryPage() {
             <h1 className="text-4xl font-bold tracking-tight">Search History</h1>
           </div>
           <p className="text-muted-foreground text-lg">
-            Browse your past visual searches and rediscover matches.
+            Click any search to view those products again.
           </p>
         </div>
         <Link to="/upload">
@@ -141,19 +169,19 @@ export default function SearchHistoryPage() {
 
       {/* Loading Skeleton */}
       {isLoading ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="bg-card/40 backdrop-blur-sm border-border/50 rounded-3xl overflow-hidden">
-              <CardContent className="p-6">
-                <div className="flex gap-6 items-start">
-                  <Skeleton className="h-28 w-28 rounded-2xl shrink-0" />
+            <Card key={i} className="bg-card/40 backdrop-blur-sm border-border/50 rounded-2xl overflow-hidden">
+              <CardContent className="p-5">
+                <div className="flex gap-5 items-center">
+                  <Skeleton className="h-20 w-20 rounded-xl shrink-0" />
                   <div className="flex-1 space-y-3">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-5 w-48" />
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-4 w-40" />
                     <div className="flex gap-2">
-                      <Skeleton className="h-8 w-16 rounded-full" />
-                      <Skeleton className="h-8 w-16 rounded-full" />
-                      <Skeleton className="h-8 w-16 rounded-full" />
+                      <Skeleton className="h-8 w-8 rounded-lg" />
+                      <Skeleton className="h-8 w-8 rounded-lg" />
+                      <Skeleton className="h-8 w-8 rounded-lg" />
                     </div>
                   </div>
                 </div>
@@ -164,14 +192,17 @@ export default function SearchHistoryPage() {
       ) : (
         <>
           {/* History Items */}
-          <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+          <motion.div variants={container} initial="hidden" animate="show" className="space-y-4">
             {history.map((entry, index) => (
               <motion.div key={entry._id || index} variants={item}>
-                <Card className="bg-card/40 backdrop-blur-sm border-border/50 hover:shadow-2xl hover:border-primary/20 transition-all duration-300 rounded-3xl overflow-hidden group">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col sm:flex-row gap-6">
+                <Card
+                  className="bg-card/40 backdrop-blur-sm border-border/50 hover:shadow-xl hover:border-primary/20 transition-all duration-300 rounded-2xl overflow-hidden cursor-pointer group"
+                  onClick={() => viewResults(entry)}
+                >
+                  <CardContent className="p-5">
+                    <div className="flex flex-col sm:flex-row gap-5">
                       {/* Search Image */}
-                      <div className="relative h-28 w-28 rounded-2xl overflow-hidden shrink-0 border border-border/50 shadow-lg">
+                      <div className="relative h-20 w-20 sm:h-24 sm:w-24 rounded-xl overflow-hidden shrink-0 border border-border/50 shadow-md">
                         {entry.imageUrl ? (
                           <img
                             src={entry.imageUrl}
@@ -184,10 +215,10 @@ export default function SearchHistoryPage() {
                             <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
                           </div>
                         )}
-                        <div className="absolute top-2 left-2">
+                        <div className="absolute top-1.5 left-1.5">
                           <Badge
                             variant="secondary"
-                            className="bg-background/80 backdrop-blur-md shadow-sm border-0 text-xs font-semibold"
+                            className="bg-background/80 backdrop-blur-md shadow-sm border-0 text-[10px] font-bold px-1.5 py-0.5"
                           >
                             #{history.length - index}
                           </Badge>
@@ -196,22 +227,22 @@ export default function SearchHistoryPage() {
 
                       {/* Details */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                          <Calendar className="h-3.5 w-3.5" />
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1.5">
+                          <Calendar className="h-3 w-3" />
                           <span>{formatDate(entry.createdAt)}</span>
                         </div>
-                        <h3 className="text-lg font-semibold tracking-tight mb-3">
-                          Visual Search • {entry.matches?.length || 0} matches found
+                        <h3 className="text-base font-semibold tracking-tight mb-2 group-hover:text-primary transition-colors">
+                          Visual Search • {entry.matches?.length || 0} products found
                         </h3>
 
                         {/* Match Thumbnails */}
                         {entry.matches && entry.matches.length > 0 && (
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="flex -space-x-3">
-                              {entry.matches.slice(0, 5).map((match, i) => (
+                          <div className="flex items-center gap-3">
+                            <div className="flex -space-x-2">
+                              {entry.matches.slice(0, 6).map((match, i) => (
                                 <div
                                   key={i}
-                                  className="h-10 w-10 rounded-xl overflow-hidden border-2 border-background shadow-sm"
+                                  className="h-9 w-9 rounded-lg overflow-hidden border-2 border-background shadow-sm hover:scale-110 hover:z-10 transition-transform"
                                 >
                                   <img
                                     src={match.imageUrl || match.thumbnail}
@@ -222,41 +253,20 @@ export default function SearchHistoryPage() {
                                 </div>
                               ))}
                             </div>
-                            {entry.matches.length > 5 && (
-                              <span className="text-xs text-muted-foreground font-medium ml-1">
-                                +{entry.matches.length - 5} more
+                            {entry.matches.length > 6 && (
+                              <span className="text-xs text-muted-foreground font-medium">
+                                +{entry.matches.length - 6} more
                               </span>
                             )}
                           </div>
                         )}
+                      </div>
 
-                        {/* Tags */}
-                        <div className="flex flex-wrap gap-2">
-                          {entry.matches &&
-                            entry.matches
-                              .slice(0, 3)
-                              .map((match, i) =>
-                                match.price ? (
-                                  <Badge
-                                    key={i}
-                                    variant="outline"
-                                    className="bg-background/50 backdrop-blur-sm border-border/50 text-xs"
-                                  >
-                                    {match.price}
-                                  </Badge>
-                                ) : null
-                              )}
-                          {entry.matches && entry.matches.length > 0 && (
-                            <a
-                              href={entry.matches[0]?.shopLink || "#"}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"
-                            >
-                              <ShoppingBag className="h-3 w-3" /> Shop top match
-                              <ArrowRight className="h-3 w-3" />
-                            </a>
-                          )}
+                      {/* View button */}
+                      <div className="flex items-center shrink-0 self-center">
+                        <div className="flex items-center gap-1.5 text-sm font-medium text-primary opacity-60 group-hover:opacity-100 transition-opacity">
+                          <span className="hidden sm:inline">View Products</span>
+                          <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                         </div>
                       </div>
                     </div>
@@ -271,7 +281,7 @@ export default function SearchHistoryPage() {
             <div className="flex justify-center mt-10">
               <Button
                 variant="outline"
-                onClick={loadMore}
+                onClick={(e) => { e.stopPropagation(); loadMore(); }}
                 className="rounded-full px-8 h-11 shadow-sm hover:scale-105 transition-transform bg-background/50 backdrop-blur-sm"
               >
                 Load More
