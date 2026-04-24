@@ -1,21 +1,27 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UploadCloud, CheckCircle2, Loader2, Sparkles } from "lucide-react";
+import { UploadCloud, CheckCircle2, Loader2, Sparkles, Image as ImageIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
 import { API_BASE_URL } from "@/config";
+import usePageTitle from "@/hooks/usePageTitle";
 
 export default function UploadPage() {
+  usePageTitle("Visual Search");
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzed, setIsAnalyzed] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
+  const dragCounter = useRef(0);
 
   const navigate = useNavigate();
   const { addUpload, setRecommendations, user } = useAppContext();
 
   const startAnalysis = async (file, url) => {
     setIsUploading(true);
+    setError(null);
 
     try {
       const formData = new FormData();
@@ -54,31 +60,68 @@ export default function UploadPage() {
       setTimeout(() => {
         navigate("/recommendations");
       }, 1500);
-    } catch (error) {
-      console.error("Upload Error:", error);
-      alert(error.message);
+    } catch (err) {
+      console.error("Upload Error:", err);
+      setError(err.message);
+      setPreviewUrl(null);
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      startAnalysis(file, url);
+  const processFile = useCallback((file) => {
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!validTypes.includes(file.type)) {
+      setError("Please upload a JPEG, PNG, WebP, or GIF image.");
+      return;
     }
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Image must be under 10MB.");
+      return;
+    }
+
+    setError(null);
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    startAnalysis(file, url);
+  }, []);
+
+  const handleFileChange = (e) => {
+    processFile(e.target.files?.[0]);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      startAnalysis(file, url);
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounter.current = 0;
+    processFile(e.dataTransfer.files?.[0]);
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setIsDragging(false);
     }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   const handleClick = () => {
@@ -88,7 +131,7 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="container mx-auto p-4 py-12 md:py-24 max-w-3xl flex flex-col items-center justify-center min-h-[calc(100vh-8rem)]">
+    <div className="container mx-auto p-4 py-12 md:py-20 max-w-3xl flex flex-col items-center justify-center min-h-[calc(100vh-8rem)]">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -109,62 +152,166 @@ export default function UploadPage() {
           onChange={handleFileChange}
         />
 
+        {/* Error banner */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto" }}
+              exit={{ opacity: 0, y: -10, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="p-4 bg-destructive/10 border border-destructive/20 text-destructive rounded-2xl text-sm font-medium text-center">
+                {error}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Drop zone */}
         <div
           className="relative group cursor-pointer"
           onClick={handleClick}
-          onDragOver={(e) => e.preventDefault()}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
           onDrop={handleDrop}
         >
-          <div className={`absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2.5rem] blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200 ${isUploading ? "animate-pulse opacity-75" : ""}`} />
-          <div className="relative border-2 border-dashed border-border/60 rounded-[2rem] p-12 md:p-24 text-center bg-card/60 hover:bg-card/80 transition-all backdrop-blur-xl flex flex-col items-center justify-center min-h-[400px] shadow-2xl overflow-hidden">
+          {/* Gradient glow */}
+          <motion.div
+            animate={{
+              opacity: isDragging ? 0.7 : isUploading ? 0.5 : 0.2,
+              scale: isDragging ? 1.02 : 1,
+            }}
+            transition={{ duration: 0.3 }}
+            className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2.5rem] blur group-hover:opacity-40 transition-all"
+          />
+
+          {/* Main drop area */}
+          <motion.div
+            animate={{
+              borderColor: isDragging
+                ? "hsl(245, 58%, 51%)"
+                : "hsl(var(--border) / 0.6)",
+              scale: isDragging ? 1.01 : 1,
+            }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className={`relative border-2 border-dashed rounded-[2rem] p-12 md:p-20 text-center bg-card/60 backdrop-blur-xl flex flex-col items-center justify-center min-h-[380px] shadow-2xl overflow-hidden transition-colors ${
+              isDragging ? "bg-primary/5" : "hover:bg-card/80"
+            }`}
+          >
+            {/* Preview background */}
             {previewUrl && (
-              <div className="absolute inset-0 z-0 opacity-20">
-                <img src={previewUrl} alt="preview" className="w-full h-full object-cover blur-sm" />
+              <div className="absolute inset-0 z-0 opacity-15">
+                <img src={previewUrl} alt="preview" className="w-full h-full object-cover blur-md" />
               </div>
             )}
 
             <AnimatePresence mode="wait">
-              {!isUploading && !isAnalyzed && (
-                <motion.div key="idle" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="flex flex-col items-center space-y-6 relative z-10">
-                  <div className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <UploadCloud className="h-10 w-10 text-primary" />
+              {/* ── IDLE state ── */}
+              {!isUploading && !isAnalyzed && !isDragging && (
+                <motion.div
+                  key="idle"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="flex flex-col items-center space-y-5 relative z-10"
+                >
+                  <div className="h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-primary/15 transition-all duration-300">
+                    <UploadCloud className="h-9 w-9 text-primary" />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-2xl font-semibold">Click or drag image to upload</h3>
-                    <p className="text-muted-foreground">JPEG, PNG, WebP up to 10MB</p>
+                    <h3 className="text-xl font-semibold">Drop image here or click to browse</h3>
+                    <p className="text-sm text-muted-foreground">JPEG, PNG, WebP · Max 10MB</p>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground/50 pt-2">
+                    <span className="flex items-center gap-1"><ImageIcon className="h-3 w-3" /> Outfit photos</span>
+                    <span>•</span>
+                    <span>Clothing items</span>
+                    <span>•</span>
+                    <span>Fashion inspiration</span>
                   </div>
                 </motion.div>
               )}
 
+              {/* ── DRAG OVER state ── */}
+              {!isUploading && !isAnalyzed && isDragging && (
+                <motion.div
+                  key="dragging"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex flex-col items-center space-y-5 relative z-10"
+                >
+                  <motion.div
+                    animate={{ y: [0, -8, 0] }}
+                    transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
+                    className="h-20 w-20 rounded-2xl bg-primary/20 flex items-center justify-center border-2 border-primary/30"
+                  >
+                    <UploadCloud className="h-9 w-9 text-primary" />
+                  </motion.div>
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-semibold text-primary">Drop to search!</h3>
+                    <p className="text-sm text-muted-foreground">Release to start AI analysis</p>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ── UPLOADING state ── */}
               {isUploading && (
-                <motion.div key="uploading" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="flex flex-col items-center space-y-6 relative z-10">
-                  <div className="relative h-24 w-24 flex items-center justify-center">
-                    <Loader2 className="h-12 w-12 text-primary animate-spin" />
-                    <Sparkles className="absolute -top-2 -right-2 h-6 w-6 text-indigo-400 animate-pulse" />
+                <motion.div
+                  key="uploading"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="flex flex-col items-center space-y-5 relative z-10"
+                >
+                  <div className="relative h-20 w-20 flex items-center justify-center">
+                    <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                    <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-indigo-400 animate-pulse" />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-2xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500 animate-pulse">Analyzing your style...</h3>
-                    <p className="text-muted-foreground">Our AI is extracting features and matching trends.</p>
+                    <h3 className="text-xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500 animate-pulse">
+                      Analyzing your style...
+                    </h3>
+                    <p className="text-sm text-muted-foreground">Matching with products from top retailers</p>
                   </div>
-                  <div className="w-full max-w-sm h-2 bg-secondary rounded-full overflow-hidden mt-8">
-                    <motion.div initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 2.8, ease: "easeInOut" }} className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" />
+                  <div className="w-full max-w-xs h-1.5 bg-secondary rounded-full overflow-hidden mt-4">
+                    <motion.div
+                      initial={{ width: "0%" }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: 2.8, ease: "easeInOut" }}
+                      className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+                    />
                   </div>
                 </motion.div>
               )}
 
+              {/* ── DONE state ── */}
               {isAnalyzed && (
-                <motion.div key="done" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center space-y-6 relative z-10">
-                  <div className="h-24 w-24 rounded-full bg-green-500/10 flex items-center justify-center">
-                    <CheckCircle2 className="h-12 w-12 text-green-500" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="text-2xl font-semibold text-green-500">Analysis Complete!</h3>
-                    <p className="text-muted-foreground">Redirecting to your recommendations...</p>
+                <motion.div
+                  key="done"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex flex-col items-center space-y-5 relative z-10"
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 12 }}
+                    className="h-20 w-20 rounded-full bg-emerald-500/10 flex items-center justify-center"
+                  >
+                    <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+                  </motion.div>
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-semibold text-emerald-500">Analysis Complete!</h3>
+                    <p className="text-sm text-muted-foreground">Redirecting to your matches...</p>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
         </div>
       </motion.div>
     </div>

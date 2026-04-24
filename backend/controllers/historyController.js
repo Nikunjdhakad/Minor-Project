@@ -51,4 +51,32 @@ const saveSearchHistory = async (userId, imageUrl, matches) => {
   }
 };
 
-module.exports = { getSearchHistory, saveSearchHistory };
+// Delete a single history item
+const deleteHistoryItem = async (req, res) => {
+  try {
+    const item = await SearchHistory.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.user._id,
+    });
+
+    if (!item) {
+      return res.status(404).json({ message: "History item not found" });
+    }
+
+    res.json({ message: "History item deleted" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Clear all history for current user
+const clearAllHistory = async (req, res) => {
+  try {
+    await SearchHistory.deleteMany({ userId: req.user._id });
+    res.json({ message: "All history cleared" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { getSearchHistory, saveSearchHistory, deleteHistoryItem, clearAllHistory };

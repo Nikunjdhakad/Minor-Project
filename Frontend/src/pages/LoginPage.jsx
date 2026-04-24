@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
 import { API_BASE_URL } from "@/config";
+import usePageTitle from "@/hooks/usePageTitle";
 
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription,
@@ -26,6 +27,7 @@ export default function LoginPage({ isSignup = false }) {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const { loginUser } = useAppContext();
+  usePageTitle(isSignup ? "Create Account" : "Sign In");
 
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : null;

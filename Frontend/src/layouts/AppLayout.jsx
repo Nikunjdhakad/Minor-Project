@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Sparkles, LayoutDashboard, Upload, Heart, User, Menu, X, LogOut } from "lucide-react";
+import { Sparkles, LayoutDashboard, Upload, Heart, User, Menu, X, LogOut, ExternalLink, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useAppContext } from "@/context/AppContext";
@@ -20,6 +20,7 @@ export default function AppLayout() {
 
   // Auth-only nav links — visible only when logged in
   const authNavLinks = [
+    { name: "Favorites", path: "/favorites", icon: Heart },
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { name: "Profile", path: "/profile-setup", icon: User },
   ];
@@ -205,15 +206,59 @@ export default function AppLayout() {
         </AnimatePresence>
       </main>
 
-      <footer className="border-t border-border/40 py-6 mt-auto bg-background/50">
-        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4" />
-            <p>© {new Date().getFullYear()} Deep Fashion. All rights reserved.</p>
+      <footer className="border-t border-border/30 mt-auto bg-card/30 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-12 max-w-6xl">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+            {/* Brand */}
+            <div className="col-span-2 md:col-span-1">
+              <Link to="/" className="flex items-center gap-2 mb-3">
+                <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
+                  <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
+                </div>
+                <span className="font-bold text-lg tracking-tight">Deep Fashion</span>
+              </Link>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                AI-powered fashion search engine. Find any clothing from a photo.
+              </p>
+            </div>
+
+            {/* Product */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3">Product</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link to="/upload" className="hover:text-foreground transition-colors">Visual Search</Link></li>
+                <li><Link to="/studio" className="hover:text-foreground transition-colors">3D Studio</Link></li>
+                <li><Link to="/recommendations" className="hover:text-foreground transition-colors">Style Matches</Link></li>
+              </ul>
+            </div>
+
+            {/* Account */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3">Account</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link></li>
+                <li><Link to="/favorites" className="hover:text-foreground transition-colors">Favorites</Link></li>
+                <li><Link to="/history" className="hover:text-foreground transition-colors">Search History</Link></li>
+              </ul>
+            </div>
+
+            {/* Support */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3">Support</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="https://github.com/Nikunjdhakad/Minor-Project" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors flex items-center gap-1.5"><ExternalLink className="h-3.5 w-3.5" />GitHub</a></li>
+                <li><a href="mailto:support@deepfashion.ai" className="hover:text-foreground transition-colors flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />Contact</a></li>
+              </ul>
+            </div>
           </div>
-          <div className="flex gap-4">
-            <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-            <a href="#" className="hover:text-foreground transition-colors">Terms</a>
+
+          {/* Bottom bar */}
+          <div className="pt-6 border-t border-border/30 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground/60">
+            <p>© {new Date().getFullYear()} Deep Fashion. All rights reserved.</p>
+            <div className="flex gap-4">
+              <a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a>
+              <a href="#" className="hover:text-foreground transition-colors">Terms of Service</a>
+            </div>
           </div>
         </div>
       </footer>

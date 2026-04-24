@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
 import { useRef } from "react";
+import usePageTitle from "@/hooks/usePageTitle";
 
 const steps = [
   {
@@ -78,6 +79,7 @@ export default function LandingPage() {
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  usePageTitle("AI Fashion Search Engine");
 
   return (
     <div className="flex flex-col w-full relative overflow-hidden">

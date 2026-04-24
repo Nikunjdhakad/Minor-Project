@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
+import usePageTitle from "@/hooks/usePageTitle";
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -29,6 +30,7 @@ export default function DashboardPage() {
 
   const totalItems = uploads.reduce((acc, curr) => acc + (curr.itemsDetected || 0), 0);
   const displayName = user?.name || user?.username || "User";
+  usePageTitle("Dashboard");
   const uploadsCount = user?.uploadsCount !== undefined ? user.uploadsCount : uploads.length;
 
   // Fetch real activity data
@@ -90,6 +92,54 @@ export default function DashboardPage() {
           </Button>
         </Link>
       </motion.div>
+
+      {/* ── New User Welcome ── */}
+      {uploadsCount === 0 && !isLoadingActivity && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-purple-500/5 rounded-2xl overflow-hidden">
+            <CardContent className="p-6 md:p-8">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6">
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight mb-1">Welcome to Deep Fashion! 🎉</h2>
+                    <p className="text-muted-foreground text-sm">
+                      Get started in 3 simple steps — it only takes seconds to find your perfect match.
+                    </p>
+                  </div>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    {[
+                      { step: "1", icon: Upload, label: "Upload", desc: "Drop any clothing photo" },
+                      { step: "2", icon: Eye, label: "Discover", desc: "AI finds matching products" },
+                      { step: "3", icon: Heart, label: "Save", desc: "Keep your favorites" },
+                    ].map((s) => (
+                      <div key={s.step} className="flex items-center gap-3 p-3 rounded-xl bg-background/60 border border-border/30">
+                        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <s.icon className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold">{s.label}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{s.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <Link to="/upload" className="shrink-0">
+                  <Button size="lg" className="rounded-xl h-12 px-8 font-semibold shadow-lg shadow-primary/20 gap-2 hover:scale-105 transition-transform">
+                    <Camera className="h-4 w-4" />
+                    Try Your First Search
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* ── Stats Row ── */}
       <motion.div variants={stagger} initial="hidden" animate="show" className="grid gap-4 grid-cols-2 lg:grid-cols-4">

@@ -2,9 +2,11 @@ import { motion } from "framer-motion";
 import { User, Phone, Shield, Sparkles, Upload, Heart, Clock } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import { Link } from "react-router-dom";
+import usePageTitle from "@/hooks/usePageTitle";
 
 export default function ProfileSetupPage() {
   const { user, favorites } = useAppContext();
+  usePageTitle("Profile");
   const displayName = user?.name || user?.fullName || user?.username || "User";
 
   return (

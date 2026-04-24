@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAppContext } from "@/context/AppContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, Search, ShoppingBag, ImageIcon, ArrowRight, Calendar, ExternalLink } from "lucide-react";
+import { Clock, Search, ShoppingBag, ImageIcon, ArrowRight, Calendar, ExternalLink, Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
+import usePageTitle from "@/hooks/usePageTitle";
 
 const container = {
   hidden: { opacity: 0 },
@@ -20,12 +21,16 @@ const item = {
 };
 
 export default function SearchHistoryPage() {
+  usePageTitle("Search History");
   const { user, setRecommendations, addUpload } = useAppContext();
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   const fetchHistory = async (pageNum = 1) => {
     if (!user?.token) {
@@ -88,6 +93,42 @@ export default function SearchHistoryPage() {
     });
 
     navigate("/recommendations");
+  };
+
+  const deleteEntry = async (e, id) => {
+    e.stopPropagation();
+    setDeletingId(id);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/history/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      if (res.ok) {
+        setHistory((prev) => prev.filter((h) => h._id !== id));
+      }
+    } catch (err) {
+      console.error("Failed to delete history item:", err);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const clearAll = async () => {
+    setIsClearing(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/history/all`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      if (res.ok) {
+        setHistory([]);
+        setShowClearConfirm(false);
+      }
+    } catch (err) {
+      console.error("Failed to clear history:", err);
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const formatDate = (dateStr) => {
@@ -157,14 +198,44 @@ export default function SearchHistoryPage() {
             Click any search to view those products again.
           </p>
         </div>
-        <Link to="/upload">
-          <Button
-            variant="outline"
-            className="rounded-full shadow-sm hover:scale-105 transition-transform bg-background/50 backdrop-blur-sm"
-          >
-            <Search className="mr-2 h-4 w-4" /> New Search
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          {history.length > 0 && !showClearConfirm && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowClearConfirm(true)}
+              className="rounded-xl gap-2 h-10 px-4 border-destructive/30 text-destructive hover:bg-destructive/10 hover:border-destructive/50 transition-all"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Clear All
+            </Button>
+          )}
+          <AnimatePresence>
+            {showClearConfirm && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="flex items-center gap-2 p-2 rounded-xl bg-destructive/5 border border-destructive/20"
+              >
+                <span className="text-xs font-medium text-destructive px-2">Delete all?</span>
+                <Button size="sm" variant="destructive" onClick={clearAll} disabled={isClearing} className="rounded-lg h-8 px-3 text-xs font-semibold">
+                  {isClearing ? "Clearing..." : "Yes, Clear"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setShowClearConfirm(false)} className="rounded-lg h-8 px-3 text-xs font-semibold">
+                  Cancel
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <Link to="/upload">
+            <Button
+              variant="outline"
+              className="rounded-full shadow-sm hover:scale-105 transition-transform bg-background/50 backdrop-blur-sm"
+            >
+              <Search className="mr-2 h-4 w-4" /> New Search
+            </Button>
+          </Link>
+        </div>
       </motion.div>
 
       {/* Loading Skeleton */}
@@ -262,8 +333,16 @@ export default function SearchHistoryPage() {
                         )}
                       </div>
 
-                      {/* View button */}
-                      <div className="flex items-center shrink-0 self-center">
+                      {/* View & Delete buttons */}
+                      <div className="flex items-center gap-2 shrink-0 self-center">
+                        <button
+                          onClick={(e) => deleteEntry(e, entry._id)}
+                          disabled={deletingId === entry._id}
+                          className="p-2 rounded-lg text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
+                          title="Delete this entry"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                         <div className="flex items-center gap-1.5 text-sm font-medium text-primary opacity-60 group-hover:opacity-100 transition-opacity">
                           <span className="hidden sm:inline">View Products</span>
                           <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />

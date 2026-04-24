@@ -3,6 +3,7 @@ import { Sparkles, Rotate3D, Shirt, Camera, Layers, Zap, ArrowRight, Bell } from
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import usePageTitle from "@/hooks/usePageTitle";
 
 const features = [
   {
@@ -43,6 +44,7 @@ const timeline = [
 ];
 
 export default function TryOnStudio() {
+  usePageTitle("3D Try-On Studio");
   const [notified, setNotified] = useState(false);
 
   return (

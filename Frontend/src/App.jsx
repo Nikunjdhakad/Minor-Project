@@ -11,6 +11,8 @@ const RecommendationsPage = lazy(() => import("./pages/RecommendationsPage"));
 const TryOnStudio = lazy(() => import("./pages/TryOnStudio"));
 const ProfileSetupPage = lazy(() => import("./pages/ProfileSetupPage"));
 const SearchHistoryPage = lazy(() => import("./pages/SearchHistoryPage"));
+const FavoritesPage = lazy(() => import("./pages/FavoritesPage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
 // Loading fallback for lazy pages
 function PageLoader() {
@@ -48,8 +50,10 @@ const router = createBrowserRouter([
       { path: "upload", element: <LazyPage><UploadPage /></LazyPage> },
       { path: "studio", element: <LazyPage><TryOnStudio /></LazyPage> },
       { path: "recommendations", element: <LazyPage><RecommendationsPage /></LazyPage> },
+      { path: "favorites", element: <LazyPage><FavoritesPage /></LazyPage> },
       { path: "profile-setup", element: <ProtectedRoute><ProfileSetupPage /></ProtectedRoute> },
       { path: "history", element: <ProtectedRoute><SearchHistoryPage /></ProtectedRoute> },
+      { path: "*", element: <LazyPage><NotFoundPage /></LazyPage> },
     ],
   },
 ]);
