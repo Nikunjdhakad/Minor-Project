@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Sparkles, LayoutDashboard, Upload, Heart, User, Menu, X, LogOut, ExternalLink, Mail } from "lucide-react";
+import { Sparkles, LayoutDashboard, Upload, Heart, User, Menu, X, LogOut, ExternalLink, Mail, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Logo from "@/components/Logo";
 import { useState } from "react";
@@ -62,6 +62,17 @@ export default function AppLayout() {
             </div>
 
             <div className="flex items-center gap-2.5">
+              {/* Admin Panel link — for admins */}
+              {user?.isAdmin && (
+                <Link
+                  to="/admin"
+                  className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  Admin
+                </Link>
+              )}
+
               {/* Sign In — for guests */}
               {!user && (
                 <Link
@@ -161,6 +172,18 @@ export default function AppLayout() {
                     {link.name}
                   </Link>
                 ))}
+
+                {/* Admin Panel (mobile admin) */}
+                {user?.isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={closeMobile}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-colors mt-2"
+                  >
+                    <Shield className="h-5 w-5" />
+                    Admin Panel
+                  </Link>
+                )}
 
                 {/* Sign In (mobile guest) */}
                 {!user && (

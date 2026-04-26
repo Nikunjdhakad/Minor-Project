@@ -29,6 +29,12 @@ export default function LoginPage({ isSignup = false }) {
   const { loginUser } = useAppContext();
   usePageTitle(isSignup ? "Create Account" : "Sign In");
 
+  const form = useHookForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: { username: "", mobileNo: "", password: "" },
+    mode: "onChange",
+  });
+
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : null;
 
@@ -58,12 +64,6 @@ export default function LoginPage({ isSignup = false }) {
       </div>
     );
   }
-
-  const form = useHookForm({
-    resolver: zodResolver(formSchema),
-    defaultValues: { username: "", mobileNo: "", password: "" },
-    mode: "onChange",
-  });
 
   async function onSubmit(values) {
     setError(null);

@@ -3,9 +3,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAppContext } from "@/context/AppContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, ShoppingBag, Upload, ArrowRight, ExternalLink, Search, Sparkles, Filter } from "lucide-react";
+import {
+  Heart, ShoppingBag, Upload, ArrowRight, ExternalLink,
+  Search, Sparkles, BarChart3,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import AuthPromptModal from "@/components/AuthPromptModal";
+import PriceComparePanel from "@/components/PriceComparePanel";
 import usePageTitle from "@/hooks/usePageTitle";
 
 const stagger = {
@@ -26,6 +30,7 @@ export default function RecommendationsPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authAction, setAuthAction] = useState("continue");
   const [hoveredId, setHoveredId] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const requireAuth = (actionLabel) => {
     if (!user) {
@@ -36,10 +41,10 @@ export default function RecommendationsPage() {
     return false;
   };
 
-  const handleFavorite = async (outfit) => {
+  const handleFavorite = async (e, outfit) => {
+    e.stopPropagation();
     if (requireAuth("save to favorites")) return;
     setSavingId(outfit.id);
-
     const existing = getFavoriteEntry(outfit);
     if (existing) {
       await removeFavorite(existing._id);
@@ -58,6 +63,7 @@ export default function RecommendationsPage() {
   };
 
   const handleShopClick = (e, outfit) => {
+    e.stopPropagation();
     if (requireAuth("shop this look")) {
       e.preventDefault();
     }
@@ -127,11 +133,7 @@ export default function RecommendationsPage() {
                   animate={{ scale: 1, opacity: 1 }}
                   className="h-14 w-14 rounded-xl overflow-hidden border-2 border-primary/20 shadow-lg shadow-primary/10 shrink-0"
                 >
-                  <img
-                    src={latestUpload.imageUrl}
-                    alt="Your upload"
-                    className="h-full w-full object-cover"
-                  />
+                  <img src={latestUpload.imageUrl} alt="Your upload" className="h-full w-full object-cover" />
                 </motion.div>
               )}
               <div>
@@ -142,7 +144,7 @@ export default function RecommendationsPage() {
                   </Badge>
                 </h1>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Curated products matching your uploaded outfit
+                  Click any product to compare prices across stores
                 </p>
               </div>
             </div>
@@ -173,8 +175,9 @@ export default function RecommendationsPage() {
                   onHoverStart={() => setHoveredId(outfit.id)}
                   onHoverEnd={() => setHoveredId(null)}
                   whileHover={{ y: -4 }}
+                  onClick={() => setSelectedProduct(outfit)}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  className="group relative rounded-2xl overflow-hidden bg-card/50 backdrop-blur-sm border border-border/30 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full"
+                  className="group relative rounded-2xl overflow-hidden bg-card/50 backdrop-blur-sm border border-border/30 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full cursor-pointer"
                 >
                   {/* Image Section */}
                   <div className="relative aspect-[3/4] overflow-hidden bg-muted/30">
@@ -197,11 +200,19 @@ export default function RecommendationsPage() {
                       )}
                     </div>
 
+                    {/* Compare hint */}
+                    <div className="absolute bottom-3 left-3 z-10">
+                      <span className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-background/85 backdrop-blur-lg text-[11px] font-bold shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                        <BarChart3 className="h-3.5 w-3.5 text-emerald-500" />
+                        Compare Prices
+                      </span>
+                    </div>
+
                     {/* Favorite button */}
                     <motion.button
                       whileHover={{ scale: 1.15 }}
                       whileTap={{ scale: 0.9 }}
-                      onClick={() => handleFavorite(outfit)}
+                      onClick={(e) => handleFavorite(e, outfit)}
                       disabled={savingId === outfit.id}
                       className={`absolute bottom-3 right-3 z-10 h-10 w-10 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 ${
                         favorited
@@ -211,40 +222,6 @@ export default function RecommendationsPage() {
                     >
                       <Heart className={`h-4 w-4 ${favorited ? "fill-current" : ""}`} />
                     </motion.button>
-
-                    {/* Hover overlay */}
-                    <AnimatePresence>
-                      {isHovered && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent flex items-end p-4"
-                        >
-                          <a
-                            href={outfit.shopLink || "#"}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => handleShopClick(e, outfit)}
-                            className="w-full"
-                          >
-                            <motion.div
-                              initial={{ y: 10, opacity: 0 }}
-                              animate={{ y: 0, opacity: 1 }}
-                              exit={{ y: 10, opacity: 0 }}
-                              transition={{ delay: 0.05 }}
-                            >
-                              <Button className="w-full rounded-xl h-11 font-semibold shadow-lg gap-2">
-                                <ShoppingBag className="h-4 w-4" />
-                                Shop This Look
-                                <ExternalLink className="h-3.5 w-3.5 ml-auto opacity-60" />
-                              </Button>
-                            </motion.div>
-                          </a>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </div>
 
                   {/* Info Section */}
@@ -256,7 +233,7 @@ export default function RecommendationsPage() {
                       {outfit.description || "View product details"}
                     </p>
 
-                    {/* Bottom action row — always visible */}
+                    {/* Bottom row */}
                     <div className="mt-auto flex items-center justify-between">
                       <a
                         href={outfit.shopLink || "#"}
@@ -280,6 +257,25 @@ export default function RecommendationsPage() {
           })}
         </motion.div>
       </div>
+
+      {/* ── Price Compare Panel ── */}
+      <AnimatePresence>
+        {selectedProduct && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedProduct(null)}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+            />
+            <PriceComparePanel
+              product={selectedProduct}
+              onClose={() => setSelectedProduct(null)}
+            />
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Auth Prompt Modal */}
       <AuthPromptModal

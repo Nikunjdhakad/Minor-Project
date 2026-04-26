@@ -14,6 +14,14 @@ const SearchHistoryPage = lazy(() => import("./pages/SearchHistoryPage"));
 const FavoritesPage = lazy(() => import("./pages/FavoritesPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
+// Admin pages
+const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminUserDetail = lazy(() => import("./pages/admin/AdminUserDetail"));
+const AdminSearches = lazy(() => import("./pages/admin/AdminSearches"));
+const AdminActivity = lazy(() => import("./pages/admin/AdminActivity"));
+
 // Loading fallback for lazy pages
 function PageLoader() {
   return (
@@ -38,6 +46,18 @@ function ProtectedRoute({ children }) {
   return <LazyPage>{children}</LazyPage>;
 }
 
+function AdminProtectedRoute({ children }) {
+  const userStr = localStorage.getItem("user");
+  if (!userStr) {
+    return <Navigate to="/login" replace />;
+  }
+  const userData = JSON.parse(userStr);
+  if (!userData.isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <LazyPage>{children}</LazyPage>;
+}
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -54,6 +74,21 @@ const router = createBrowserRouter([
       { path: "profile-setup", element: <ProtectedRoute><ProfileSetupPage /></ProtectedRoute> },
       { path: "history", element: <ProtectedRoute><SearchHistoryPage /></ProtectedRoute> },
       { path: "*", element: <LazyPage><NotFoundPage /></LazyPage> },
+    ],
+  },
+  {
+    path: "/admin",
+    element: (
+      <AdminProtectedRoute>
+        <AdminLayout />
+      </AdminProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <LazyPage><AdminDashboard /></LazyPage> },
+      { path: "users", element: <LazyPage><AdminUsers /></LazyPage> },
+      { path: "users/:id", element: <LazyPage><AdminUserDetail /></LazyPage> },
+      { path: "searches", element: <LazyPage><AdminSearches /></LazyPage> },
+      { path: "activity", element: <LazyPage><AdminActivity /></LazyPage> },
     ],
   },
 ]);

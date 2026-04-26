@@ -42,6 +42,7 @@ const createUser = async (req, res) => {
         mobileNo: user.mobileNo,
         email: user.email,
         name: user.name,
+        isAdmin: user.isAdmin,
         token: generateToken(user._id),
       });
     } else {
@@ -65,6 +66,7 @@ const loginUser = async (req, res) => {
         mobileNo: user.mobileNo,
         email: user.email,
         name: user.name,
+        isAdmin: user.isAdmin,
         token: generateToken(user._id),
       });
     } else {
@@ -87,6 +89,7 @@ const getUserProfile = async (req, res) => {
         mobileNo: user.mobileNo,
         email: user.email,
         name: user.name,
+        isAdmin: user.isAdmin,
         styleLevel: user.styleLevel,
         uploadsCount: user.uploadsCount,
       });

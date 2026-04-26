@@ -252,24 +252,27 @@ export default function DashboardPage() {
                   <p className="text-xs text-muted-foreground/60 mt-1">Start uploading to see your activity chart</p>
                 </div>
               ) : (
-                <div className="h-48 w-full flex items-end justify-between gap-3 pt-6">
-                  {chartData.map((item, i) => {
-                    const heightPct = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
-                    return (
-                      <div key={i} className="relative w-full flex flex-col items-center gap-2 group">
-                        <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-foreground text-background text-[11px] px-2 py-0.5 rounded-md shadow-lg pointer-events-none z-10 font-semibold whitespace-nowrap">
-                          {item.count} {item.count === 1 ? "session" : "sessions"}
+                <div className="w-full pt-6" style={{ height: "192px" }}>
+                  <div className="relative w-full h-full flex items-end justify-between gap-3">
+                    {chartData.map((item, i) => {
+                      const barMaxHeight = 140; // px (192 - padding for label)
+                      const heightPx = maxCount > 0 ? Math.max((item.count / maxCount) * barMaxHeight, 8) : 8;
+                      return (
+                        <div key={i} className="relative w-full flex flex-col items-center gap-2 group">
+                          <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-foreground text-background text-[11px] px-2 py-0.5 rounded-md shadow-lg pointer-events-none z-10 font-semibold whitespace-nowrap">
+                            {item.count} {item.count === 1 ? "session" : "sessions"}
+                          </div>
+                          <motion.div
+                            initial={{ height: 0 }}
+                            animate={{ height: heightPx }}
+                            transition={{ duration: 0.8, delay: 0.4 + i * 0.08, ease: "easeOut" }}
+                            className="w-full max-w-[2.5rem] rounded-t-lg bg-gradient-to-t from-primary/60 to-primary/20 hover:from-primary hover:to-primary/60 transition-colors cursor-pointer"
+                          />
+                          <span className="text-[11px] text-muted-foreground font-medium">{item.day}</span>
                         </div>
-                        <motion.div
-                          initial={{ height: 0 }}
-                          animate={{ height: `${Math.max(heightPct, 6)}%` }}
-                          transition={{ duration: 0.8, delay: 0.4 + i * 0.08, ease: "easeOut" }}
-                          className="w-full max-w-[2.5rem] rounded-t-lg bg-gradient-to-t from-primary/60 to-primary/20 hover:from-primary hover:to-primary/60 transition-colors cursor-pointer"
-                        />
-                        <span className="text-[11px] text-muted-foreground font-medium">{item.day}</span>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </CardContent>
