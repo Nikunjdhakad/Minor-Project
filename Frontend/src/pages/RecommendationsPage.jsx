@@ -3,10 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAppContext } from "@/context/AppContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, ShoppingBag, Upload, ArrowRight, ExternalLink, Search, Sparkles, Filter, BarChart3 } from "lucide-react";
+import { Heart, ShoppingBag, Upload, ArrowRight, ExternalLink, Search, Sparkles, ArrowUpDown, TrendingUp, TrendingDown, Type } from "lucide-react";
 import { Link } from "react-router-dom";
 import AuthPromptModal from "@/components/AuthPromptModal";
-import PriceCompareSidebar from "@/components/PriceCompareSidebar";
 import usePageTitle from "@/hooks/usePageTitle";
 
 const stagger = {
@@ -27,7 +26,18 @@ export default function RecommendationsPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authAction, setAuthAction] = useState("continue");
   const [hoveredId, setHoveredId] = useState(null);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [sortBy, setSortBy] = useState("match");
+
+  // Sort products
+  const parsePrice = (p) => { const n = parseFloat(String(p || "").replace(/[^0-9.]/g, "")); return isNaN(n) ? Infinity : n; };
+  const sortedOutfits = [...outfits].sort((a, b) => {
+    switch (sortBy) {
+      case "price-low": return parsePrice(a.price) - parsePrice(b.price);
+      case "price-high": return parsePrice(b.price) - parsePrice(a.price);
+      case "name": return (a.name || "").localeCompare(b.name || "");
+      default: return (b.matchScore || 0) - (a.matchScore || 0);
+    }
+  });
 
   const requireAuth = (actionLabel) => {
     if (!user) {
@@ -38,8 +48,7 @@ export default function RecommendationsPage() {
     return false;
   };
 
-  const handleFavorite = async (e, outfit) => {
-    e.stopPropagation();
+  const handleFavorite = async (outfit) => {
     if (requireAuth("save to favorites")) return;
     setSavingId(outfit.id);
 
@@ -61,7 +70,6 @@ export default function RecommendationsPage() {
   };
 
   const handleShopClick = (e, outfit) => {
-    e.stopPropagation();
     if (requireAuth("shop this look")) {
       e.preventDefault();
     }
@@ -146,7 +154,7 @@ export default function RecommendationsPage() {
                   </Badge>
                 </h1>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Click any product to compare prices across stores
+                  Curated products matching your uploaded outfit
                 </p>
               </div>
             </div>
@@ -157,165 +165,157 @@ export default function RecommendationsPage() {
               </Button>
             </Link>
           </motion.div>
+
+          {/* Sorting Controls */}
+          <div className="flex items-center gap-2 mt-4 flex-wrap">
+            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mr-1">Sort by</span>
+            {[
+              { key: "match", label: "Best Match", icon: Sparkles },
+              { key: "price-low", label: "Price: Low → High", icon: TrendingUp },
+              { key: "price-high", label: "Price: High → Low", icon: TrendingDown },
+              { key: "name", label: "Name A–Z", icon: Type },
+            ].map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setSortBy(opt.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  sortBy === opt.key
+                    ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
+                    : "bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                }`}
+              >
+                <opt.icon className="h-3 w-3" />
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* ── Main Content: Grid + Sidebar ── */}
+      {/* ── Product Grid ── */}
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="flex gap-6 items-start">
-          {/* Product Grid */}
-          <div className="flex-1 min-w-0">
-            <motion.div
-              variants={stagger}
-              initial="hidden"
-              animate="show"
-              className={`grid gap-5 sm:grid-cols-2 ${selectedProduct ? "lg:grid-cols-2 xl:grid-cols-3" : "lg:grid-cols-3 xl:grid-cols-4"}`}
-            >
-              {outfits.map((outfit, index) => {
-                const favorited = isFavorited(outfit);
-                const isHovered = hoveredId === outfit.id;
-                const isSelected = selectedProduct?.id === outfit.id;
-                return (
-                  <motion.div key={outfit.id || index} variants={fadeUp}>
-                    <motion.div
-                      onHoverStart={() => setHoveredId(outfit.id)}
-                      onHoverEnd={() => setHoveredId(null)}
-                      whileHover={{ y: -4 }}
-                      onClick={() => setSelectedProduct(isSelected ? null : outfit)}
-                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                      className={`group relative rounded-2xl overflow-hidden bg-card/50 backdrop-blur-sm border hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full cursor-pointer ${
-                        isSelected
-                          ? "border-primary/50 ring-2 ring-primary/20 shadow-lg shadow-primary/10"
-                          : "border-border/30 hover:border-primary/20"
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          animate="show"
+          className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        >
+          {sortedOutfits.map((outfit, index) => {
+            const favorited = isFavorited(outfit);
+            const isHovered = hoveredId === outfit.id;
+            return (
+              <motion.div key={outfit.id || index} variants={fadeUp}>
+                <motion.div
+                  onHoverStart={() => setHoveredId(outfit.id)}
+                  onHoverEnd={() => setHoveredId(null)}
+                  whileHover={{ y: -4 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  className="group relative rounded-2xl overflow-hidden bg-card/50 backdrop-blur-sm border border-border/30 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full"
+                >
+                  {/* Image Section */}
+                  <div className="relative aspect-[3/4] overflow-hidden bg-muted/30">
+                    <img
+                      src={outfit.imageUrl}
+                      alt={outfit.name}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                      loading="lazy"
+                    />
+
+                    {/* Top badges */}
+                    <div className="absolute top-3 left-3 right-3 flex items-start justify-between z-10">
+                      <Badge className="bg-background/85 backdrop-blur-lg text-foreground border-0 shadow-sm font-bold text-xs px-2.5 py-1 rounded-lg">
+                        {outfit.matchScore}% Match
+                      </Badge>
+                      {outfit.price && (
+                        <Badge className="bg-foreground/85 backdrop-blur-lg text-background border-0 shadow-sm font-bold text-xs px-2.5 py-1 rounded-lg">
+                          {outfit.price}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Favorite button */}
+                    <motion.button
+                      whileHover={{ scale: 1.15 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => handleFavorite(outfit)}
+                      disabled={savingId === outfit.id}
+                      className={`absolute bottom-3 right-3 z-10 h-10 w-10 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 ${
+                        favorited
+                          ? "bg-pink-500 text-white shadow-pink-500/30"
+                          : "bg-background/85 backdrop-blur-lg text-foreground hover:bg-pink-500 hover:text-white hover:shadow-pink-500/20"
                       }`}
                     >
-                      {/* Image Section */}
-                      <div className="relative aspect-[3/4] overflow-hidden bg-muted/30">
-                        <img
-                          src={outfit.imageUrl}
-                          alt={outfit.name}
-                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                          loading="lazy"
-                        />
+                      <Heart className={`h-4 w-4 ${favorited ? "fill-current" : ""}`} />
+                    </motion.button>
 
-                        {/* Top badges */}
-                        <div className="absolute top-3 left-3 right-3 flex items-start justify-between z-10">
-                          <Badge className="bg-background/85 backdrop-blur-lg text-foreground border-0 shadow-sm font-bold text-xs px-2.5 py-1 rounded-lg">
-                            {outfit.matchScore}% Match
-                          </Badge>
-                          {outfit.price && (
-                            <Badge className="bg-foreground/85 backdrop-blur-lg text-background border-0 shadow-sm font-bold text-xs px-2.5 py-1 rounded-lg">
-                              {outfit.price}
-                            </Badge>
-                          )}
-                        </div>
-
-                        {/* Compare Prices hint */}
-                        <div className="absolute bottom-3 left-3 z-10">
-                          <span className={`flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[11px] font-bold shadow-sm transition-all ${
-                            isSelected
-                              ? "bg-primary text-primary-foreground opacity-100"
-                              : "bg-background/85 backdrop-blur-lg opacity-0 group-hover:opacity-100"
-                          }`}>
-                            <BarChart3 className="h-3.5 w-3.5" />
-                            {isSelected ? "Comparing..." : "Compare Prices"}
-                          </span>
-                        </div>
-
-                        {/* Favorite button */}
-                        <motion.button
-                          whileHover={{ scale: 1.15 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={(e) => handleFavorite(e, outfit)}
-                          disabled={savingId === outfit.id}
-                          className={`absolute bottom-3 right-3 z-10 h-10 w-10 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 ${
-                            favorited
-                              ? "bg-pink-500 text-white shadow-pink-500/30"
-                              : "bg-background/85 backdrop-blur-lg text-foreground hover:bg-pink-500 hover:text-white hover:shadow-pink-500/20"
-                          }`}
+                    {/* Hover overlay */}
+                    <AnimatePresence>
+                      {isHovered && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent flex items-end p-4"
                         >
-                          <Heart className={`h-4 w-4 ${favorited ? "fill-current" : ""}`} />
-                        </motion.button>
-
-                        {/* Hover overlay */}
-                        <AnimatePresence>
-                          {isHovered && (
-                            <motion.div
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent flex items-end p-4"
-                            >
-                              <a
-                                href={outfit.shopLink || "#"}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => handleShopClick(e, outfit)}
-                                className="w-full"
-                              >
-                                <motion.div
-                                  initial={{ y: 10, opacity: 0 }}
-                                  animate={{ y: 0, opacity: 1 }}
-                                  exit={{ y: 10, opacity: 0 }}
-                                  transition={{ delay: 0.05 }}
-                                >
-                                  <Button className="w-full rounded-xl h-11 font-semibold shadow-lg gap-2">
-                                    <ShoppingBag className="h-4 w-4" />
-                                    Shop This Look
-                                    <ExternalLink className="h-3.5 w-3.5 ml-auto opacity-60" />
-                                  </Button>
-                                </motion.div>
-                              </a>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-
-                      {/* Info Section */}
-                      <div className="p-4 flex-1 flex flex-col">
-                        <h3 className="font-semibold text-sm leading-snug mb-1 line-clamp-2 group-hover:text-primary transition-colors">
-                          {outfit.name || "Fashion Item"}
-                        </h3>
-                        <p className="text-xs text-muted-foreground line-clamp-1 mb-3">
-                          {outfit.description || "View product details"}
-                        </p>
-
-                        {/* Bottom action row — always visible */}
-                        <div className="mt-auto flex items-center justify-between">
                           <a
                             href={outfit.shopLink || "#"}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => handleShopClick(e, outfit)}
-                            className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+                            className="w-full"
                           >
-                            Visit Store <ArrowRight className="h-3 w-3" />
+                            <motion.div
+                              initial={{ y: 10, opacity: 0 }}
+                              animate={{ y: 0, opacity: 1 }}
+                              exit={{ y: 10, opacity: 0 }}
+                              transition={{ delay: 0.05 }}
+                            >
+                              <Button className="w-full rounded-xl h-11 font-semibold shadow-lg gap-2">
+                                <ShoppingBag className="h-4 w-4" />
+                                Shop This Look
+                                <ExternalLink className="h-3.5 w-3.5 ml-auto opacity-60" />
+                              </Button>
+                            </motion.div>
                           </a>
-                          {outfit.tags && outfit.tags.length > 0 && (
-                            <span className="text-[10px] text-muted-foreground/60 font-medium bg-muted/40 px-2 py-0.5 rounded-md">
-                              {outfit.tags[0]}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  </motion.div>
-                );
-              })}
-            </motion.div>
-          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
 
-          {/* ── Price Compare Sidebar (right side) ── */}
-          <AnimatePresence>
-            {selectedProduct && (
-              <PriceCompareSidebar
-                product={selectedProduct}
-                onClose={() => setSelectedProduct(null)}
-              />
-            )}
-          </AnimatePresence>
-        </div>
+                  {/* Info Section */}
+                  <div className="p-4 flex-1 flex flex-col">
+                    <h3 className="font-semibold text-sm leading-snug mb-1 line-clamp-2 group-hover:text-primary transition-colors">
+                      {outfit.name || "Fashion Item"}
+                    </h3>
+                    <p className="text-xs text-muted-foreground line-clamp-1 mb-3">
+                      {outfit.description || "View product details"}
+                    </p>
+
+                    {/* Bottom action row — always visible */}
+                    <div className="mt-auto flex items-center justify-between">
+                      <a
+                        href={outfit.shopLink || "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => handleShopClick(e, outfit)}
+                        className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+                      >
+                        Visit Store <ArrowRight className="h-3 w-3" />
+                      </a>
+                      {outfit.tags && outfit.tags.length > 0 && (
+                        <span className="text-[10px] text-muted-foreground/60 font-medium bg-muted/40 px-2 py-0.5 rounded-md">
+                          {outfit.tags[0]}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
       </div>
 
       {/* Auth Prompt Modal */}
